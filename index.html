@@ -2,78 +2,101 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>考研题库 · 西综/政治/英语</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
-    body { background: #e8f4f8; padding: 20px; min-height: 100vh; }
-    .container { max-width: 1400px; margin: 0 auto; background: rgba(255,255,255,0.7); backdrop-filter: blur(4px); border-radius: 32px; padding: 24px 28px 32px; box-shadow: 0 8px 32px rgba(0,50,80,0.08); }
-    .banner { background: linear-gradient(135deg,#b3d9f0,#d4e9fa); border-radius: 20px; padding: 16px 28px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 28px; border: 1px solid rgba(255,255,255,0.6); }
-    .banner h1 { font-size: 22px; font-weight: 600; color: #034b7a; display: flex; align-items: center; gap: 10px; }
-    .banner h1 small { font-size: 16px; font-weight: 400; color: #1f6390; background: rgba(255,255,255,0.5); padding: 2px 14px; border-radius: 40px; }
-    .countdown { background: rgba(255,255,255,0.7); padding: 8px 22px; border-radius: 40px; font-size: 20px; font-weight: 600; color: #034b7a; border: 1px solid rgba(255,255,255,0.6); }
-    .countdown span { background: #034b7a; color: white; padding: 2px 12px; border-radius: 30px; margin: 0 4px; }
-    .filter-bar { background: white; padding: 18px 24px; border-radius: 20px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 20px; box-shadow: 0 2px 12px rgba(0,40,70,0.04); border: 1px solid rgba(180,210,230,0.3); margin-bottom: 24px; }
-    .filter-group { display: flex; flex-direction: column; gap: 4px; flex: 1 0 140px; }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: #e8f4f8; padding: 12px; min-height: 100vh; }
+    .container { max-width: 1000px; margin: 0 auto; background: rgba(255,255,255,0.75); backdrop-filter: blur(4px); border-radius: 24px; padding: 16px 16px 24px; box-shadow: 0 8px 32px rgba(0,50,80,0.08); }
+
+    .banner { background: linear-gradient(135deg,#b3d9f0,#d4e9fa); border-radius: 16px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.6); }
+    .banner h1 { font-size: 18px; font-weight: 600; color: #034b7a; display: flex; align-items: center; gap: 8px; }
+    .banner h1 small { font-size: 14px; font-weight: 400; color: #1f6390; background: rgba(255,255,255,0.5); padding: 2px 12px; border-radius: 40px; }
+    .countdown { background: rgba(255,255,255,0.7); padding: 6px 18px; border-radius: 40px; font-size: 16px; font-weight: 600; color: #034b7a; border: 1px solid rgba(255,255,255,0.6); white-space: nowrap; }
+
+    /* 筛选栏：移动端垂直堆叠 */
+    .filter-bar { background: white; padding: 14px 16px; border-radius: 16px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; box-shadow: 0 2px 12px rgba(0,40,70,0.04); border: 1px solid rgba(180,210,230,0.3); margin-bottom: 16px; }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; flex: 1 0 130px; }
     .filter-group label { font-size: 13px; font-weight: 500; color: #2a5f7a; }
-    .filter-group select { padding: 8px 14px; border-radius: 40px; border: 1px solid #cfe0eb; background: #f7fbfe; font-size: 15px; outline: none; }
-    .filter-group select:focus { border-color: #6ba3c9; box-shadow: 0 0 0 3px rgba(70,150,200,0.15); }
-    .filter-actions { display: flex; gap: 10px; align-items: center; margin-left: auto; }
-    .btn { padding: 8px 22px; border: none; border-radius: 40px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.3); background: #c3def0; color: #034b7a; }
+    .filter-group select { padding: 10px 12px; border-radius: 40px; border: 1px solid #cfe0eb; background: #f7fbfe; font-size: 15px; outline: none; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2220%22%20height%3D%2220%22%3E%3Cpath%20d%3D%22M5%206l5%205%205-5%22%20stroke%3D%22%23333%22%20stroke-width%3D%222%22%20fill%3D%22none%22/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; padding-right: 30px; }
+    .filter-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; }
+    .filter-actions button { flex: 1 1 auto; min-height: 44px; }
+
+    /* 通用按钮优化：保证最小触摸面积 */
+    .btn { padding: 8px 20px; border: none; border-radius: 40px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.15s; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.3); }
     .btn-primary { background: #4a8ab5; color: white; border-color: #3a7aa5; }
-    .btn-primary:hover { background: #3a7aa5; transform: translateY(-1px); box-shadow: 0 6px 14px rgba(50,130,180,0.25); }
+    .btn-primary:hover { background: #3a7aa5; }
     .btn-success { background: #3e9b7c; color: white; border-color: #2e8b6c; }
     .btn-success:hover { background: #2e8b6c; }
     .btn-outline { background: transparent; border: 1px solid #7fb0cc; color: #1f6390; }
     .btn-outline:hover { background: #dcecf5; }
-    .question-list { background: white; border-radius: 20px; padding: 20px 24px 24px; box-shadow: 0 2px 12px rgba(0,40,70,0.04); border: 1px solid rgba(180,210,230,0.3); min-height: 200px; }
-    .question-list h2 { font-size: 18px; font-weight: 500; color: #1f6390; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
-    .question-item { border-bottom: 1px solid #e4eff5; padding: 16px 0; }
+    .btn-danger { background: #c0392b; color: white; border-color: #a93226; }
+    .btn-danger:hover { background: #a93226; }
+    .btn-small { padding: 6px 14px; font-size: 13px; min-height: 36px; }
+
+    /* 题目列表 */
+    .question-list { background: white; border-radius: 16px; padding: 16px 16px 24px; box-shadow: 0 2px 12px rgba(0,40,70,0.04); border: 1px solid rgba(180,210,230,0.3); min-height: 150px; }
+    .question-list h2 { font-size: 17px; font-weight: 500; color: #1f6390; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .question-item { border-bottom: 1px solid #e4eff5; padding: 14px 0; position: relative; }
     .question-item:last-child { border-bottom: none; }
-    .q-header { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
-    .q-tag { background: #e1eff7; color: #034b7a; padding: 2px 14px; border-radius: 40px; font-size: 13px; font-weight: 500; }
-    .q-type { background: #c7e0eb; color: #135b7a; font-weight: 600; padding: 2px 12px; border-radius: 30px; font-size: 13px; }
-    .q-subject { color: #2a6f8a; font-weight: 500; font-size: 14px; }
-    .q-chapter { color: #4a7f9a; font-size: 13px; }
-    .q-text { margin: 8px 0 10px 0; font-size: 16px; line-height: 1.6; padding-left: 14px; border-left: 3px solid #b3d9f0; }
-    .q-options { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 6px 0 10px 0; }
-    .q-options button { padding: 6px 18px; border-radius: 40px; border: 2px solid #cfe0eb; background: #f7fbfe; font-size: 15px; cursor: pointer; transition: 0.15s; color: #1a3a4a; }
-    .q-options button:hover { border-color: #6ba3c9; }
+
+    .q-header { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    .q-tag { background: #e1eff7; color: #034b7a; padding: 2px 12px; border-radius: 40px; font-size: 12px; font-weight: 500; }
+    .q-type { background: #c7e0eb; color: #135b7a; font-weight: 600; padding: 2px 10px; border-radius: 30px; font-size: 12px; }
+    .q-subject { color: #2a6f8a; font-weight: 500; font-size: 13px; }
+    .q-chapter { color: #4a7f9a; font-size: 12px; }
+
+    .q-text { margin: 6px 0 8px; font-size: 16px; line-height: 1.5; padding-left: 10px; border-left: 3px solid #b3d9f0; }
+
+    /* 选项按钮：移动端独占一行，易点击 */
+    .q-options { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+    .q-options button { width: 100%; padding: 12px 16px; border-radius: 40px; border: 2px solid #cfe0eb; background: #f7fbfe; font-size: 15px; cursor: pointer; transition: 0.15s; color: #1a3a4a; text-align: left; }
+    .q-options button:active { background: #e3f0f7; }
     .q-options button.selected { border-color: #4a8ab5; background: #d4e9fa; }
     .q-options button.correct { border-color: #2e8b6c; background: #c8f0d8; }
     .q-options button.wrong { border-color: #b33; background: #fdd; }
-    .q-answer-display { margin-top: 8px; font-size: 14px; color: #135b7a; background: #e3f0f7; padding: 4px 16px; border-radius: 30px; display: inline-block; }
-    .q-result { margin-top: 8px; font-weight: 600; }
+
+    .q-result { margin-top: 6px; font-weight: 600; font-size: 14px; }
     .q-result.correct { color: #2e8b6c; }
     .q-result.wrong { color: #b33; }
+
+    .q-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .q-answer-display { margin-top: 6px; font-size: 13px; color: #135b7a; background: #e3f0f7; padding: 4px 12px; border-radius: 30px; display: inline-block; }
+
     .empty-msg { color: #6f8fa0; text-align: center; padding: 40px 0; }
-    .modal-overlay { display: none; position: fixed; top:0;left:0;width:100%;height:100%; background: rgba(0,30,50,0.35); backdrop-filter: blur(3px); align-items: center; justify-content: center; z-index: 1000; }
-    .modal-overlay.active { display: flex; }
-    .modal-box { background: white; border-radius: 32px; max-width: 880px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 32px 36px 28px; box-shadow: 0 20px 60px rgba(0,30,50,0.25); }
-    .modal-box h2 { font-size: 22px; color: #034b7a; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-    .modal-box .close-btn { background: none; border: none; font-size: 28px; cursor: pointer; color: #7f9faf; transition: 0.2s; }
-    .modal-box .close-btn:hover { color: #034b7a; transform: rotate(90deg); }
-    .form-row { display: flex; flex-wrap: wrap; gap: 14px 20px; margin-bottom: 14px; }
-    .form-group { flex: 1 0 180px; display: flex; flex-direction: column; gap: 4px; }
+
+    /* 模态框 */
+    .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,30,50,0.4); backdrop-filter: blur(3px); align-items: center; justify-content: center; z-index: 1000; }
+    .modal-overlay.active { display: flex; padding: 12px; }
+    .modal-box { background: white; border-radius: 24px; max-width: 700px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 24px 20px 20px; box-shadow: 0 20px 60px rgba(0,30,50,0.25); }
+    .modal-box h2 { font-size: 20px; color: #034b7a; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .close-btn { background: none; border: none; font-size: 28px; cursor: pointer; color: #7f9faf; transition: 0.2s; line-height: 1; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 10px 12px; margin-bottom: 12px; }
+    .form-group { flex: 1 0 160px; display: flex; flex-direction: column; gap: 4px; }
     .form-group label { font-size: 13px; font-weight: 500; color: #2a5f7a; }
-    .form-group input, .form-group select, .form-group textarea { padding: 8px 14px; border-radius: 40px; border: 1px solid #cfe0eb; background: #f7fbfe; font-size: 14px; outline: none; transition: 0.2s; }
-    .form-group textarea { border-radius: 16px; resize: vertical; min-height: 50px; }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #6ba3c9; box-shadow: 0 0 0 3px rgba(70,150,200,0.12); }
-    .options-editor { background: #f2f8fc; border-radius: 20px; padding: 16px 20px; margin: 6px 0 12px 0; border: 1px solid #d4e4ed; }
-    .opt-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
-    .opt-row input { flex: 1; padding: 6px 14px; border-radius: 40px; border: 1px solid #cfe0eb; background: white; }
-    .opt-row button { background: none; border: none; color: #b33; font-size: 20px; cursor: pointer; padding: 0 8px; }
-    .add-opt-btn { background: #c3def0; border: none; border-radius: 40px; padding: 4px 18px; font-size: 14px; cursor: pointer; color: #034b7a; }
-    .sub-questions-area { margin: 12px 0; border-top: 1px dashed #cfe0eb; padding-top: 12px; }
-    .sub-question-row { background: #f7fbfe; border-radius: 16px; padding: 12px 16px; margin-bottom: 12px; border: 1px solid #d4e4ed; }
+    .form-group input, .form-group select, .form-group textarea { padding: 10px 14px; border-radius: 40px; border: 1px solid #cfe0eb; background: #f7fbfe; font-size: 14px; outline: none; }
+    .form-group textarea { border-radius: 16px; min-height: 50px; }
+    .options-editor { background: #f2f8fc; border-radius: 16px; padding: 14px 16px; margin: 8px 0 12px; border: 1px solid #d4e4ed; }
+    .opt-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .opt-row input { flex: 1; padding: 10px 14px; border-radius: 40px; border: 1px solid #cfe0eb; background: white; }
+    .opt-row button { background: none; border: none; color: #b33; font-size: 22px; cursor: pointer; padding: 0 4px; min-height: 44px; }
+    .add-opt-btn { background: #c3def0; border: none; border-radius: 40px; padding: 6px 16px; font-size: 14px; cursor: pointer; color: #034b7a; min-height: 44px; }
+
+    .sub-questions-area { margin: 10px 0; border-top: 1px dashed #cfe0eb; padding-top: 12px; }
+    .sub-question-row { background: #f7fbfe; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; border: 1px solid #d4e4ed; }
     .sub-question-row .sq-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-    .sub-question-row .sq-header label { font-weight: 500; color: #034b7a; }
-    .sub-question-row .sq-header button { background: none; border: none; color: #b33; font-size: 18px; cursor: pointer; }
-    .sub-question-row textarea { width: 100%; border-radius: 16px; border: 1px solid #cfe0eb; padding: 8px 14px; font-size: 14px; resize: vertical; min-height: 40px; }
-    .sub-question-row .sq-answers { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-top: 8px; }
-    .sub-question-row .sq-answers label { display: flex; align-items: center; gap: 4px; font-size: 14px; }
-    .form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 18px; }
-    @media (max-width:700px){ .container{ padding:16px; } .banner{ flex-direction:column; align-items:stretch; text-align:center; } .filter-bar{ flex-direction:column; align-items:stretch; } .filter-actions{ margin-left:0; justify-content:stretch; } .modal-box{ padding:24px 18px; } }
+    .sub-question-row .sq-header button { background: none; border: none; color: #b33; font-size: 20px; cursor: pointer; }
+    .sub-question-row textarea { width: 100%; border-radius: 12px; border: 1px solid #cfe0eb; padding: 8px 12px; font-size: 14px; }
+    .sq-answers { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 6px; }
+    .sq-answers label { font-size: 14px; }
+
+    .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .form-actions button { min-width: 80px; }
+
+    /* 删除确认弹窗（内嵌于 modal 风格） */
+    .confirm-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 20px; padding: 20px 24px; box-shadow: 0 16px 48px rgba(0,0,0,0.25); z-index: 2000; display: flex; flex-direction: column; gap: 12px; max-width: 320px; width: 90%; }
+    .confirm-dialog p { font-size: 15px; color: #1a3a4a; }
+    .confirm-dialog .actions { display: flex; gap: 8px; justify-content: flex-end; }
   </style>
 </head>
 <body>
@@ -82,6 +105,7 @@
     <h1>📚 考研题库 <small>西综 · 政治 · 英语</small></h1>
     <div class="countdown">⏳ 距考研 <span id="daysLeft">--</span> 天</div>
   </div>
+
   <div class="filter-bar">
     <div class="filter-group"><label>📌 科目</label><select id="subjectFilter"><option value="">全部</option><option value="西医综合">西医综合</option><option value="政治">政治</option><option value="英语">英语</option></select></div>
     <div class="filter-group"><label>📂 二级分类</label><select id="subFilter"><option value="">全部</option></select></div>
@@ -91,13 +115,14 @@
       <button class="btn btn-success" id="addBtn">➕ 录入题目</button>
     </div>
   </div>
+
   <div class="question-list">
     <h2><span>📝 题目列表</span><span id="resultCount">0 道题</span></h2>
     <div id="questionsContainer"><div class="empty-msg">加载中...</div></div>
   </div>
 </div>
 
-<!-- 录入模态框 -->
+<!-- 录入/编辑模态框 -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-box">
     <h2>✏️ 录入题目 <button class="close-btn" id="closeModalBtn">×</button></h2>
@@ -116,7 +141,6 @@
           </select>
         </div>
       </div>
-      <!-- 公共选项 -->
       <div class="options-editor">
         <label style="font-weight:500; display:block; margin-bottom:8px;">公共选项</label>
         <div id="optionsContainer">
@@ -126,16 +150,14 @@
         </div>
         <button type="button" class="add-opt-btn" id="addOptionBtn">➕ 添加选项</button>
       </div>
-      <!-- 题干区域（动态） -->
       <div id="questionInputArea">
         <div class="form-group"><label>题干 *</label><textarea id="inputQuestion" rows="2" placeholder="请输入题目内容..." required></textarea></div>
         <div class="form-group"><label>正确答案（可多选）</label><div id="answerCheckboxes"></div></div>
       </div>
-      <!-- B型多题干容器 -->
       <div id="subQuestionsArea" style="display:none;" class="sub-questions-area">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <span style="font-weight:500; color:#034b7a;">📋 子题干列表</span>
-          <button type="button" class="btn btn-outline" id="addSubQuestionBtn" style="padding:4px 16px;">➕ 添加子题干</button>
+          <button type="button" class="btn btn-outline btn-small" id="addSubQuestionBtn">➕ 添加子题干</button>
         </div>
         <div id="subQuestionsContainer"></div>
       </div>
@@ -150,11 +172,10 @@
 <script>
   (function() {
     // ===================== 全局状态 =====================
-    let questions = [];               // 从API加载的所有题目
-    const answerState = {};          // 答题状态 { qid: { selected:[], submitted:false } }
+    let questions = [];
+    const answerState = {};
 
-    // ===================== API 调用 =====================
-    /* MODIFIED: 替换 localStorage 为 API 调用 */
+    // ===================== API 封装 =====================
     async function fetchQuestions(filters = {}) {
       const params = new URLSearchParams(filters);
       const res = await fetch(`/api/questions?${params.toString()}`);
@@ -172,12 +193,49 @@
       return await res.json();
     }
 
+    async function deleteQuestion(id) {
+      const res = await fetch(`/api/questions?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: '删除失败' }));
+        throw new Error(err.error || '删除失败');
+      }
+    }
+
+    // ===================== 自定义确认对话框（移动端友好） =====================
+    function showConfirm(message) {
+      return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.35);z-index:1999;';
+        const dialog = document.createElement('div');
+        dialog.className = 'confirm-dialog';
+        dialog.innerHTML = `
+          <p>${message}</p>
+          <div class="actions">
+            <button class="btn btn-outline btn-small" id="confirmCancel">取消</button>
+            <button class="btn btn-danger btn-small" id="confirmOk">确认删除</button>
+          </div>
+        `;
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        dialog.querySelector('#confirmCancel').addEventListener('click', () => {
+          document.body.removeChild(overlay);
+          resolve(false);
+        });
+        dialog.querySelector('#confirmOk').addEventListener('click', () => {
+          document.body.removeChild(overlay);
+          resolve(true);
+        });
+      });
+    }
+
     // ===================== 加载 & 渲染 =====================
     async function loadAndRender(filters = {}) {
       try {
         questions = await fetchQuestions(filters);
         renderQuestions();
-        // 更新筛选下拉（基于当前数据）
         updateSubFilterOptions();
         updateChapterFilterOptions();
       } catch (e) {
@@ -204,6 +262,7 @@
         const state = answerState[q.id] || { selected: [], submitted: false };
         const selected = state.selected || [];
         const submitted = state.submitted || false;
+
         let resultHtml = '';
         if (submitted) {
           const correct = q.answer.slice().sort();
@@ -213,6 +272,7 @@
           const correctText = q.answer.map(i => String.fromCharCode(65 + i)).join('、');
           resultHtml += `<div class="q-answer-display">✅ 正确答案：${correctText}</div>`;
         }
+
         html += `
           <div class="question-item" data-qid="${q.id}">
             <div class="q-header">
@@ -223,9 +283,10 @@
             </div>
             <div class="q-text">${q.question}</div>
             <div class="q-options" data-qid="${q.id}">${optionsHtml}</div>
-            <div style="margin-top:6px;">
-              <button class="btn btn-primary submit-answer" data-qid="${q.id}" style="padding:4px 20px;font-size:14px;">📤 提交答案</button>
-              ${submitted ? `<button class="btn btn-outline reset-answer" data-qid="${q.id}" style="padding:4px 16px;font-size:14px;margin-left:8px;">🔄 重做</button>` : ''}
+            <div class="q-actions">
+              <button class="btn btn-primary submit-answer" data-qid="${q.id}">📤 提交答案</button>
+              ${submitted ? `<button class="btn btn-outline reset-answer" data-qid="${q.id}">🔄 重做</button>` : ''}
+              <button class="btn btn-danger delete-question" data-qid="${q.id}">🗑️ 删除</button>
             </div>
             ${resultHtml}
           </div>
@@ -233,7 +294,7 @@
       });
       container.innerHTML = html;
 
-      // 绑定选项点击事件
+      // 绑定选项点击
       container.querySelectorAll('.opt-btn').forEach(btn => {
         btn.addEventListener('click', function() {
           const qid = parseInt(this.dataset.qid);
@@ -254,7 +315,7 @@
         });
       });
 
-      // 提交按钮
+      // 提交答案
       container.querySelectorAll('.submit-answer').forEach(btn => {
         btn.addEventListener('click', function() {
           const qid = parseInt(this.dataset.qid);
@@ -265,11 +326,11 @@
           if (state.selected.length === 0) { alert('请至少选择一个选项'); return; }
           state.submitted = true;
           answerState[qid] = state;
-          renderQuestions(); // 重新渲染以显示结果
+          renderQuestions();
         });
       });
 
-      // 重做按钮
+      // 重做
       container.querySelectorAll('.reset-answer').forEach(btn => {
         btn.addEventListener('click', function() {
           const qid = parseInt(this.dataset.qid);
@@ -278,7 +339,27 @@
         });
       });
 
-      // 初始化样式
+      // 删除按钮
+      container.querySelectorAll('.delete-question').forEach(btn => {
+        btn.addEventListener('click', async function() {
+          const qid = parseInt(this.dataset.qid);
+          const q = questions.find(q => q.id === qid);
+          if (!q) return;
+          const confirmed = await showConfirm(`确定要删除这道题目吗？\n\n${q.question.substring(0, 30)}...`);
+          if (!confirmed) return;
+          try {
+            await deleteQuestion(qid);
+            // 从本地移除并重新渲染（或重新加载）
+            questions = questions.filter(q => q.id !== qid);
+            renderQuestions();
+            updateSubFilterOptions();
+            updateChapterFilterOptions();
+          } catch (e) {
+            alert('删除失败：' + e.message);
+          }
+        });
+      });
+
       questions.forEach(q => updateOptionStyles(q.id));
     }
 
@@ -302,16 +383,14 @@
       });
     }
 
-    // ===================== 筛选下拉动态更新 =====================
+    // ===================== 筛选下拉 =====================
     function updateSubFilterOptions() {
       const subject = document.getElementById('subjectFilter').value;
       const set = new Set();
       questions.forEach(q => { if (!subject || q.subject === subject) if (q.subCategory) set.add(q.subCategory); });
       const subs = Array.from(set).sort();
       const sel = document.getElementById('subFilter');
-      const currentVal = sel.value;
       sel.innerHTML = '<option value="">全部二级分类</option>' + subs.map(v => `<option value="${v}">${v}</option>`).join('');
-      if (currentVal) sel.value = currentVal;
     }
 
     function updateChapterFilterOptions() {
@@ -325,12 +404,9 @@
       });
       const chaps = Array.from(set).sort();
       const sel = document.getElementById('chapterFilter');
-      const currentVal = sel.value;
       sel.innerHTML = '<option value="">全部章节</option>' + chaps.map(v => `<option value="${v}">${v}</option>`).join('');
-      if (currentVal) sel.value = currentVal;
     }
 
-    // ===================== 筛选事件 =====================
     document.getElementById('subjectFilter').addEventListener('change', () => {
       updateSubFilterOptions();
       updateChapterFilterOptions();
@@ -343,7 +419,6 @@
         subCategory: document.getElementById('subFilter').value,
         chapter: document.getElementById('chapterFilter').value
       };
-      // 清空答题状态
       for (let key in answerState) delete answerState[key];
       loadAndRender(filters);
     });
@@ -388,8 +463,7 @@
       const input = document.createElement('input');
       input.type = 'text';
       input.className = 'opt-input';
-      const count = document.querySelectorAll('.opt-input').length;
-      input.placeholder = `选项 ${String.fromCharCode(65 + count)}`;
+      input.placeholder = `选项 ${String.fromCharCode(65 + document.querySelectorAll('.opt-input').length)}`;
       input.value = value;
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -408,19 +482,9 @@
       optionsContainer.appendChild(row);
       updateAnswerCheckboxes();
       updateAllSubAnswerCheckboxes();
-      refreshRemoveButtons();
-    }
-
-    function refreshRemoveButtons() {
-      const rows = document.querySelectorAll('.opt-row');
-      rows.forEach((row, idx) => {
-        const btn = row.querySelector('.remove-opt');
-        if (btn) btn.style.display = rows.length > 2 ? 'inline-block' : (idx >= 2 ? 'inline-block' : 'none');
-      });
     }
 
     addOptionBtn.addEventListener('click', () => addOptionRow(''));
-
     optionsContainer.addEventListener('input', function(e) {
       if (e.target.classList.contains('opt-input')) {
         updateAnswerCheckboxes();
@@ -491,7 +555,6 @@
       optionsContainer.innerHTML = '';
       addOptionRow('');
       addOptionRow('');
-      refreshRemoveButtons();
       subQuestionsContainer.innerHTML = '';
       document.getElementById('inputQuestion').value = '';
       updateAnswerCheckboxes();
@@ -504,8 +567,6 @@
     cancelModalBtn.addEventListener('click', () => modalOverlay.classList.remove('active'));
     modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) modalOverlay.classList.remove('active'); });
 
-    // ===================== 提交录入（改为 API） =====================
-    /* MODIFIED: 提交逻辑改为调用 API */
     questionForm.addEventListener('submit', async function(e) {
       e.preventDefault();
       const subject = document.getElementById('inputSubject').value;
@@ -515,7 +576,6 @@
       const optInputs = document.querySelectorAll('.opt-input');
       const options = Array.from(optInputs).map(inp => inp.value.trim()).filter(v => v !== '');
       if (options.length < 2) { alert('至少需要两个选项'); return; }
-      if (options.some(v => v === '')) { alert('选项内容不能为空'); return; }
 
       let toSave = [];
       if (type === 'B') {
@@ -528,12 +588,7 @@
           const chks = row.querySelectorAll('.sq-answers .answer-chk:checked');
           const answer = Array.from(chks).map(cb => parseInt(cb.value));
           if (answer.length === 0) { alert(`子题干 "${question}" 未选择答案`); return; }
-          toSave.push({
-            subject, subCategory, chapter, type,
-            question,
-            options: options.slice(),
-            answer
-          });
+          toSave.push({ subject, subCategory, chapter, type, question, options: options.slice(), answer });
         }
       } else {
         const question = document.getElementById('inputQuestion').value.trim();
@@ -541,19 +596,13 @@
         const chks = document.querySelectorAll('#answerCheckboxes .answer-chk:checked');
         const answer = Array.from(chks).map(cb => parseInt(cb.value));
         if (answer.length === 0) { alert('请选择正确答案'); return; }
-        toSave.push({
-          subject, subCategory, chapter, type,
-          question,
-          options: options.slice(),
-          answer
-        });
+        toSave.push({ subject, subCategory, chapter, type, question, options: options.slice(), answer });
       }
 
       try {
         await saveQuestionsToAPI(toSave);
         alert('题目保存成功！');
         modalOverlay.classList.remove('active');
-        // 重新加载当前筛选的数据
         const filters = {
           subject: document.getElementById('subjectFilter').value,
           subCategory: document.getElementById('subFilter').value,
@@ -577,8 +626,7 @@
     updateCountdown();
     setInterval(updateCountdown, 60000);
 
-    // ===================== 初始化加载 =====================
-    /* MODIFIED: 启动时从 API 加载数据 */
+    // 初始加载
     loadAndRender();
   })();
 </script>
