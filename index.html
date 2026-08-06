@@ -22,7 +22,7 @@
     .filter-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; }
     .filter-actions button { flex: 1 1 auto; min-height: 44px; }
 
-    /* 通用按钮优化：保证最小触摸面积 */
+    /* 通用按钮：保证最小触摸面积 */
     .btn { padding: 8px 20px; border: none; border-radius: 40px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.15s; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.3); }
     .btn-primary { background: #4a8ab5; color: white; border-color: #3a7aa5; }
     .btn-primary:hover { background: #3a7aa5; }
@@ -93,7 +93,7 @@
     .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
     .form-actions button { min-width: 80px; }
 
-    /* 删除确认弹窗（内嵌于 modal 风格） */
+    /* 删除确认弹窗 */
     .confirm-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 20px; padding: 20px 24px; box-shadow: 0 16px 48px rgba(0,0,0,0.25); z-index: 2000; display: flex; flex-direction: column; gap: 12px; max-width: 320px; width: 90%; }
     .confirm-dialog p { font-size: 15px; color: #1a3a4a; }
     .confirm-dialog .actions { display: flex; gap: 8px; justify-content: flex-end; }
@@ -151,7 +151,7 @@
         <button type="button" class="add-opt-btn" id="addOptionBtn">➕ 添加选项</button>
       </div>
       <div id="questionInputArea">
-        <div class="form-group"><label>题干 *</label><textarea id="inputQuestion" rows="2" placeholder="请输入题目内容..." required></textarea></div>
+        <div class="form-group"><label>题干 *</label><textarea id="inputQuestion" rows="2" placeholder="请输入题目内容..."></textarea></div>
         <div class="form-group"><label>正确答案（可多选）</label><div id="answerCheckboxes"></div></div>
       </div>
       <div id="subQuestionsArea" style="display:none;" class="sub-questions-area">
@@ -349,7 +349,6 @@
           if (!confirmed) return;
           try {
             await deleteQuestion(qid);
-            // 从本地移除并重新渲染（或重新加载）
             questions = questions.filter(q => q.id !== qid);
             renderQuestions();
             updateSubFilterOptions();
@@ -437,6 +436,7 @@
     const subQuestionsArea = document.getElementById('subQuestionsArea');
     const subQuestionsContainer = document.getElementById('subQuestionsContainer');
     const addSubQuestionBtn = document.getElementById('addSubQuestionBtn');
+    const inputQuestion = document.getElementById('inputQuestion'); // 单题干输入框
 
     function updateAnswerCheckboxes(container = answerCheckboxes) {
       const optInputs = document.querySelectorAll('.opt-input');
@@ -492,11 +492,13 @@
       }
     });
 
+    // 切换题型，修复 B 型无法提交的问题
     function toggleQuestionArea() {
       const type = inputType.value;
       if (type === 'B') {
         questionInputArea.style.display = 'none';
         subQuestionsArea.style.display = 'block';
+        inputQuestion.disabled = true;   // 禁用隐藏的必填项，防止表单验证拦截
         if (subQuestionsContainer.children.length === 0) {
           addSubQuestionRow();
           addSubQuestionRow();
@@ -504,6 +506,7 @@
       } else {
         questionInputArea.style.display = 'block';
         subQuestionsArea.style.display = 'none';
+        inputQuestion.disabled = false;  // 恢复
         updateAnswerCheckboxes();
       }
     }
@@ -556,7 +559,8 @@
       addOptionRow('');
       addOptionRow('');
       subQuestionsContainer.innerHTML = '';
-      document.getElementById('inputQuestion').value = '';
+      inputQuestion.value = '';
+      inputQuestion.disabled = false;   // 重置状态
       updateAnswerCheckboxes();
       toggleQuestionArea();
       modalOverlay.classList.add('active');
@@ -567,6 +571,7 @@
     cancelModalBtn.addEventListener('click', () => modalOverlay.classList.remove('active'));
     modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) modalOverlay.classList.remove('active'); });
 
+    // 提交录入
     questionForm.addEventListener('submit', async function(e) {
       e.preventDefault();
       const subject = document.getElementById('inputSubject').value;
@@ -591,7 +596,7 @@
           toSave.push({ subject, subCategory, chapter, type, question, options: options.slice(), answer });
         }
       } else {
-        const question = document.getElementById('inputQuestion').value.trim();
+        const question = inputQuestion.value.trim();
         if (!question) { alert('请输入题干'); return; }
         const chks = document.querySelectorAll('#answerCheckboxes .answer-chk:checked');
         const answer = Array.from(chks).map(cb => parseInt(cb.value));
