@@ -26,7 +26,7 @@ export async function onRequest(context) {
       const chapter = url.searchParams.get('chapter') || '';
 
       // 动态构建查询条件，使用参数化防止 SQL 注入
-      let sql = 'SELECT * FROM questions WHERE 1=1';
+      let sql = 'SELECT * FROM Fighting WHERE 1=1';
       const params = [];
 
       if (subject) {
@@ -66,7 +66,7 @@ export async function onRequest(context) {
 
       // 使用事务批量插入
       const insertStmt = db.prepare(
-        'INSERT INTO questions (subject, subCategory, chapter, type, question, options, answer) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO Fighting (subject, subCategory, chapter, type, question, options, answer) VALUES (?, ?, ?, ?, ?, ?, ?)'
       );
 
       // 执行批量插入（D1 支持 batch）
