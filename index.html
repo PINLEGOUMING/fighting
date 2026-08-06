@@ -181,7 +181,6 @@
 
     .confirm-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--modal-bg); border-radius: 20px; padding: 20px 24px; box-shadow: 0 16px 48px rgba(0,0,0,0.3); z-index: 2000; display: flex; flex-direction: column; gap: 12px; max-width: 320px; width: 90%; }
 
-    /* 测验模式 */
     .quiz-container { display: flex; flex-direction: column; height: 100%; }
     .quiz-progress { font-size: 14px; margin-bottom: 12px; }
     .quiz-question { flex: 1; }
@@ -229,7 +228,49 @@
 
 <!-- 录入模态框 -->
 <div class="modal-overlay" id="modalOverlay">
-  <div class="modal-box"> <!-- 内容由JS动态生成，不变 --> </div>
+  <div class="modal-box">
+    <h2>✏️ 录入题目 <button class="close-btn" id="closeModalBtn">×</button></h2>
+    <form id="questionForm" novalidate>
+      <div class="form-row">
+        <div class="form-group"><label>科目 *</label><select id="inputSubject" required><option value="西医综合">西医综合</option><option value="政治">政治</option><option value="英语">英语</option></select></div>
+        <div class="form-group"><label>二级分类</label><input type="text" id="inputSub" placeholder="如：内科学"></div>
+        <div class="form-group"><label>章节</label><input type="text" id="inputChapter" placeholder="如：呼吸系统"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>题型 *</label>
+          <select id="inputType" required>
+            <option value="A">A型（单选）</option>
+            <option value="X">X型（多选）</option>
+            <option value="B">B型（多题干共用选项）</option>
+          </select>
+        </div>
+      </div>
+      <div class="options-editor">
+        <label style="font-weight:500; display:block; margin-bottom:8px;">公共选项（至少填写两个）</label>
+        <div id="optionsContainer">
+          <div class="opt-row"><input type="text" class="opt-input" placeholder="选项 A" value=""><button type="button" class="remove-opt" style="display:none;">✕</button></div>
+          <div class="opt-row"><input type="text" class="opt-input" placeholder="选项 B" value=""><button type="button" class="remove-opt" style="display:none;">✕</button></div>
+          <div class="opt-row"><input type="text" class="opt-input" placeholder="选项 C" value=""><button type="button" class="remove-opt" style="display:none;">✕</button></div>
+        </div>
+        <button type="button" class="add-opt-btn" id="addOptionBtn">➕ 添加选项</button>
+      </div>
+      <div id="questionInputArea">
+        <div class="form-group"><label>题干 *</label><textarea id="inputQuestion" rows="2" placeholder="请输入题目内容..."></textarea></div>
+        <div class="form-group"><label>正确答案（可多选）</label><div id="answerCheckboxes"></div></div>
+      </div>
+      <div id="subQuestionsArea" style="display:none;" class="sub-questions-area">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-weight:500; color:var(--banner-text);">📋 子题干（每项必填，并选择答案）</span>
+          <button type="button" class="btn btn-outline btn-small" id="addSubQuestionBtn">➕ 添加子题干</button>
+        </div>
+        <div id="subQuestionsContainer"></div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" id="cancelModalBtn">取消</button>
+        <button type="submit" class="btn btn-primary" id="submitQuestionBtn">💾 保存题目</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- 笔记模态框 -->
@@ -243,9 +284,7 @@
 
 <!-- 随机练习模态框 -->
 <div class="modal-overlay" id="quizModalOverlay">
-  <div class="modal-box" id="quizModalBox">
-    <!-- 动态填充 -->
-  </div>
+  <div class="modal-box" id="quizModalBox"></div>
 </div>
 
 <!-- 导入文件选择器（隐藏） -->
@@ -254,15 +293,14 @@
 <script>
   (function() {
     // ===================== 全局状态 =====================
-    let allQuestions = [];          // 全量题目缓存（用于错题/收藏/随机）
-    let questions = [];            // 当前展示的题目
+    let allQuestions = [];
+    let questions = [];
     const answerState = {};
     let wrongSet = new Set(JSON.parse(localStorage.getItem('wrongSet') || '[]'));
     let favSet = new Set(JSON.parse(localStorage.getItem('favSet') || '[]'));
     let notes = JSON.parse(localStorage.getItem('questionNotes') || '{}');
-    let currentMode = 'all';       // 'all', 'wrong', 'favorite'
+    let currentMode = 'all';
     let searchTerm = '';
-    let isQuizMode = false;
 
     // 夜间模式
     const themeToggle = document.getElementById('themeToggle');
@@ -276,23 +314,18 @@
       }
     }
     themeToggle.addEventListener('click', () => {
-      if (document.body.classList.contains('dark')) {
-        localStorage.setItem('theme', 'light');
-      } else {
-        localStorage.setItem('theme', 'dark');
-      }
+      localStorage.setItem('theme', document.body.classList.contains('dark') ? 'light' : 'dark');
       applyTheme();
     });
     applyTheme();
 
-    // 持久化
     function saveLocalData() {
       localStorage.setItem('wrongSet', JSON.stringify([...wrongSet]));
       localStorage.setItem('favSet', JSON.stringify([...favSet]));
       localStorage.setItem('questionNotes', JSON.stringify(notes));
     }
 
-    // ===================== API 封装 =====================
+    // ===================== API =====================
     async function fetchQuestions(filters = {}) {
       const params = new URLSearchParams(filters);
       const res = await fetch(`/api/questions?${params.toString()}`);
@@ -300,11 +333,11 @@
       return await res.json();
     }
 
-    async function saveQuestionsToAPI(questionsArray) {
+    async function saveQuestionsToAPI(arr) {
       const res = await fetch('/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(questionsArray),
+        body: JSON.stringify(arr),
       });
       if (!res.ok) throw new Error(`保存失败: ${res.status}`);
       return await res.json();
@@ -314,6 +347,44 @@
       const res = await fetch(`/api/questions?id=${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('删除失败');
     }
+
+    // ===================== 筛选下拉动态更新 =====================
+    function updateSubFilterOptions() {
+      const subject = document.getElementById('subjectFilter').value;
+      const set = new Set();
+      allQuestions.forEach(q => {
+        if (!subject || q.subject === subject) {
+          if (q.subCategory) set.add(q.subCategory);
+        }
+      });
+      const subs = Array.from(set).sort();
+      const sel = document.getElementById('subFilter');
+      const currentVal = sel.value;
+      sel.innerHTML = '<option value="">全部二级分类</option>' + subs.map(v => `<option value="${v}">${v}</option>`).join('');
+      if (currentVal) sel.value = currentVal;
+    }
+
+    function updateChapterFilterOptions() {
+      const subject = document.getElementById('subjectFilter').value;
+      const sub = document.getElementById('subFilter').value;
+      const set = new Set();
+      allQuestions.forEach(q => {
+        if ((!subject || q.subject === subject) && (!sub || q.subCategory === sub)) {
+          if (q.chapter) set.add(q.chapter);
+        }
+      });
+      const chaps = Array.from(set).sort();
+      const sel = document.getElementById('chapterFilter');
+      const currentVal = sel.value;
+      sel.innerHTML = '<option value="">全部章节</option>' + chaps.map(v => `<option value="${v}">${v}</option>`).join('');
+      if (currentVal) sel.value = currentVal;
+    }
+
+    document.getElementById('subjectFilter').addEventListener('change', () => {
+      updateSubFilterOptions();
+      updateChapterFilterOptions();
+    });
+    document.getElementById('subFilter').addEventListener('change', updateChapterFilterOptions);
 
     // ===================== 加载与筛选 =====================
     async function loadAllQuestions() {
@@ -332,7 +403,6 @@
       } else if (currentMode === 'favorite') {
         source = allQuestions.filter(q => favSet.has(q.id));
       } else {
-        // 普通模式，基于筛选条件从allQuestions中过滤（也可以重新拉取，这里用allQuestions减少请求）
         const subject = document.getElementById('subjectFilter').value;
         const subCategory = document.getElementById('subFilter').value;
         const chapter = document.getElementById('chapterFilter').value;
@@ -343,25 +413,21 @@
           return true;
         });
       }
-      // 搜索过滤
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
-        source = source.filter(q => 
-          q.question.toLowerCase().includes(term) ||
-          q.options.some(opt => opt.toLowerCase().includes(term))
-        );
+        source = source.filter(q => q.question.toLowerCase().includes(term) || q.options.some(o => o.toLowerCase().includes(term)));
       }
       return source;
     }
 
     async function refreshQuestions() {
-      // 如果全量数据为空则先加载
       if (allQuestions.length === 0) await loadAllQuestions();
       questions = getFilteredQuestions();
       renderQuestions();
+      updateSubFilterOptions();
+      updateChapterFilterOptions();
     }
 
-    // 筛选按钮点击
     document.getElementById('filterBtn').addEventListener('click', async () => {
       currentMode = 'all';
       updateModeButtons();
@@ -369,7 +435,6 @@
       await refreshQuestions();
     });
 
-    // 实时搜索（防抖）
     let searchTimeout;
     document.getElementById('searchInput').addEventListener('input', function() {
       clearTimeout(searchTimeout);
@@ -379,7 +444,6 @@
       }, 400);
     });
 
-    // 模式切换按钮
     function updateModeButtons() {
       document.getElementById('wrongModeBtn').classList.toggle('btn-active', currentMode === 'wrong');
       document.getElementById('favModeBtn').classList.toggle('btn-active', currentMode === 'favorite');
@@ -447,7 +511,7 @@
       });
       container.innerHTML = html;
 
-      // 绑定选项点击
+      // 事件绑定（选项、提交、重做、收藏、笔记、删除）—— 保持原样
       container.querySelectorAll('.opt-btn').forEach(btn => {
         btn.addEventListener('click', function() {
           const qid = parseInt(this.dataset.qid);
@@ -468,7 +532,6 @@
         });
       });
 
-      // 提交答案
       container.querySelectorAll('.submit-answer').forEach(btn => {
         btn.addEventListener('click', function() {
           const qid = parseInt(this.dataset.qid);
@@ -478,28 +541,24 @@
           if (state.submitted) return;
           if (state.selected.length === 0) { alert('请至少选择一个选项'); return; }
           state.submitted = true;
-          // 错题自动收集
           const correct = q.answer.slice().sort();
           const user = state.selected.slice().sort();
           const isCorrect = correct.length === user.length && correct.every((v, i) => v === user[i]);
           if (!isCorrect) wrongSet.add(qid);
-          else wrongSet.delete(qid); // 答对了可从错题本移除
+          else wrongSet.delete(qid);
           answerState[qid] = state;
           saveLocalData();
           renderQuestions();
         });
       });
 
-      // 重做
       container.querySelectorAll('.reset-answer').forEach(btn => {
         btn.addEventListener('click', function() {
-          const qid = parseInt(this.dataset.qid);
-          delete answerState[qid];
+          delete answerState[parseInt(this.dataset.qid)];
           renderQuestions();
         });
       });
 
-      // 收藏切换
       container.querySelectorAll('.fav-toggle').forEach(btn => {
         btn.addEventListener('click', function() {
           const qid = parseInt(this.dataset.qid);
@@ -510,15 +569,12 @@
         });
       });
 
-      // 笔记按钮
       container.querySelectorAll('.note-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-          const qid = parseInt(this.dataset.qid);
-          openNoteModal(qid);
+          openNoteModal(parseInt(this.dataset.qid));
         });
       });
 
-      // 删除
       container.querySelectorAll('.delete-question').forEach(btn => {
         btn.addEventListener('click', async function() {
           const qid = parseInt(this.dataset.qid);
@@ -557,13 +613,13 @@
       });
     }
 
-    function showConfirm(message) {
+    function showConfirm(msg) {
       return new Promise(resolve => {
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.35);z-index:1999;';
         const dialog = document.createElement('div');
         dialog.className = 'confirm-dialog';
-        dialog.innerHTML = `<p>${message}</p><div class="actions"><button class="btn btn-outline" id="cCancel">取消</button><button class="btn btn-danger" id="cOk">确认</button></div>`;
+        dialog.innerHTML = `<p>${msg}</p><div class="actions"><button class="btn btn-outline" id="cCancel">取消</button><button class="btn btn-danger" id="cOk">确认</button></div>`;
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
         dialog.querySelector('#cCancel').onclick = () => { document.body.removeChild(overlay); resolve(false); };
@@ -571,7 +627,7 @@
       });
     }
 
-    // ===================== 笔记模态框 =====================
+    // ===================== 笔记 =====================
     let currentNoteQid = null;
     function openNoteModal(qid) {
       currentNoteQid = qid;
@@ -586,7 +642,7 @@
         notes[currentNoteQid] = document.getElementById('noteTextarea').value.trim();
         saveLocalData();
         document.getElementById('noteModalOverlay').classList.remove('active');
-        renderQuestions(); // 刷新笔记图标
+        renderQuestions();
       }
     });
 
@@ -597,55 +653,39 @@
     });
 
     function openQuizSetup() {
-      const overlay = document.getElementById('quizModalOverlay');
       const box = document.getElementById('quizModalBox');
       box.innerHTML = `
         <h2>🎲 随机练习 <button class="close-btn" id="closeQuizSetup">×</button></h2>
         <div class="form-group"><label>题目数量（最多${allQuestions.length}）</label><input type="number" id="quizCount" min="1" max="${allQuestions.length}" value="10"></div>
         <div class="form-actions"><button class="btn btn-primary" id="startQuizBtn">开始练习</button></div>
       `;
-      overlay.classList.add('active');
-      document.getElementById('closeQuizSetup').onclick = () => overlay.classList.remove('active');
+      document.getElementById('quizModalOverlay').classList.add('active');
+      document.getElementById('closeQuizSetup').onclick = () => document.getElementById('quizModalOverlay').classList.remove('active');
       document.getElementById('startQuizBtn').onclick = () => {
-        const count = parseInt(document.getElementById('quizCount').value) || 10;
-        startQuiz(count);
+        startQuiz(parseInt(document.getElementById('quizCount').value) || 10);
       };
     }
 
-    let quizQuestions = [];
-    let quizIndex = 0;
-    let quizAnswers = [];
-
+    let quizQuestions = [], quizIndex = 0, quizAnswers = [];
     function startQuiz(count) {
-      const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
-      quizQuestions = shuffled.slice(0, Math.min(count, allQuestions.length));
+      quizQuestions = [...allQuestions].sort(() => Math.random() - 0.5).slice(0, Math.min(count, allQuestions.length));
       quizIndex = 0;
       quizAnswers = new Array(quizQuestions.length).fill(null);
-      isQuizMode = true;
       document.getElementById('quizModalOverlay').classList.remove('active');
       showQuizQuestion();
     }
 
     function showQuizQuestion() {
-      if (quizIndex >= quizQuestions.length) {
-        showQuizResult();
-        return;
-      }
+      if (quizIndex >= quizQuestions.length) { showQuizResult(); return; }
       const q = quizQuestions[quizIndex];
-      const box = document.getElementById('quizModalBox');
-      box.innerHTML = `
+      document.getElementById('quizModalBox').innerHTML = `
         <div class="quiz-container">
           <div class="quiz-progress">题目 ${quizIndex+1} / ${quizQuestions.length}</div>
           <div class="quiz-question">
             <div class="q-text">${q.question}</div>
-            <div class="q-options">${q.options.map((opt, idx) => {
-              const letter = String.fromCharCode(65+idx);
-              return `<button class="opt-btn quiz-opt" data-idx="${idx}">${letter}. ${opt}</button>`;
-            }).join('')}</div>
+            <div class="q-options">${q.options.map((opt, idx) => `<button class="opt-btn quiz-opt" data-idx="${idx}">${String.fromCharCode(65+idx)}. ${opt}</button>`).join('')}</div>
           </div>
-          <div class="quiz-actions">
-            <button class="btn btn-primary" id="nextQuizBtn" disabled>下一题</button>
-          </div>
+          <div class="quiz-actions"><button class="btn btn-primary" id="nextQuizBtn" disabled>下一题</button></div>
         </div>
       `;
       document.getElementById('quizModalOverlay').classList.add('active');
@@ -660,22 +700,17 @@
             selected = [idx];
           } else {
             this.classList.toggle('selected');
-            const allSelected = document.querySelectorAll('.quiz-opt.selected');
-            selected = Array.from(allSelected).map(b => parseInt(b.dataset.idx));
+            selected = Array.from(document.querySelectorAll('.quiz-opt.selected')).map(b => parseInt(b.dataset.idx));
           }
           document.getElementById('nextQuizBtn').disabled = selected.length === 0;
         });
       });
       document.getElementById('nextQuizBtn').addEventListener('click', () => {
         quizAnswers[quizIndex] = selected;
-        // 错题自动收集
         const correct = q.answer.slice().sort();
         const user = selected.slice().sort();
-        if (correct.length !== user.length || !correct.every((v,i) => v===user[i])) {
-          wrongSet.add(q.id);
-        } else {
-          wrongSet.delete(q.id);
-        }
+        if (correct.length !== user.length || !correct.every((v,i) => v===user[i])) wrongSet.add(q.id);
+        else wrongSet.delete(q.id);
         saveLocalData();
         quizIndex++;
         showQuizQuestion();
@@ -683,44 +718,36 @@
     }
 
     function showQuizResult() {
-      const total = quizQuestions.length;
       let correct = 0;
       quizQuestions.forEach((q, i) => {
         const ans = quizAnswers[i] || [];
-        const correctAns = q.answer.slice().sort();
-        if (ans.length === correctAns.length && ans.every((v,idx) => v===correctAns[idx])) correct++;
+        const ca = q.answer.slice().sort();
+        if (ans.length === ca.length && ans.every((v,idx) => v===ca[idx])) correct++;
       });
       document.getElementById('quizModalBox').innerHTML = `
         <div class="quiz-result">
           <h2>🎉 练习完成</h2>
-          <p>正确率：${correct} / ${total} (${Math.round(correct/total*100)}%)</p>
+          <p>正确率：${correct} / ${quizQuestions.length} (${Math.round(correct/quizQuestions.length*100)}%)</p>
           <p>错题已自动加入错题本</p>
           <button class="btn btn-primary" id="closeQuizResult">关闭</button>
         </div>
       `;
       document.getElementById('closeQuizResult').addEventListener('click', () => {
         document.getElementById('quizModalOverlay').classList.remove('active');
-        isQuizMode = false;
         refreshQuestions();
       });
     }
 
     // ===================== 导入导出 =====================
     document.getElementById('exportBtn').addEventListener('click', () => {
-      const data = JSON.stringify(allQuestions, null, 2);
-      const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      const blob = new Blob([JSON.stringify(allQuestions, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
-      a.href = url;
+      a.href = URL.createObjectURL(blob);
       a.download = `kaoyan_questions_${new Date().toISOString().slice(0,10)}.json`;
       a.click();
-      URL.revokeObjectURL(url);
     });
 
-    document.getElementById('importBtn').addEventListener('click', () => {
-      document.getElementById('importFileInput').click();
-    });
-
+    document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFileInput').click());
     document.getElementById('importFileInput').addEventListener('change', async function() {
       const file = this.files[0];
       if (!file) return;
@@ -733,27 +760,174 @@
           alert(`成功导入 ${data.length} 道题目`);
           await loadAllQuestions();
           await refreshQuestions();
-        } catch (err) {
-          alert('导入失败：' + err.message);
-        }
+        } catch (err) { alert('导入失败：' + err.message); }
       };
       reader.readAsText(file);
       this.value = '';
     });
 
+    // ===================== 录入题目 =====================
+    const modalOverlay = document.getElementById('modalOverlay');
+    const addBtn = document.getElementById('addBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const cancelModalBtn = document.getElementById('cancelModalBtn');
+    const questionForm = document.getElementById('questionForm');
+    const inputType = document.getElementById('inputType');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const addOptionBtn = document.getElementById('addOptionBtn');
+    const answerCheckboxes = document.getElementById('answerCheckboxes');
+    const questionInputArea = document.getElementById('questionInputArea');
+    const subQuestionsArea = document.getElementById('subQuestionsArea');
+    const subQuestionsContainer = document.getElementById('subQuestionsContainer');
+    const addSubQuestionBtn = document.getElementById('addSubQuestionBtn');
+    const inputQuestion = document.getElementById('inputQuestion');
+
+    function updateAnswerCheckboxes(container = answerCheckboxes) {
+      const optInputs = document.querySelectorAll('.opt-input');
+      let html = '';
+      for (let i = 0; i < optInputs.length; i++) {
+        html += `<label style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;"><input type="checkbox" class="answer-chk" value="${i}"> ${String.fromCharCode(65+i)}</label>`;
+      }
+      container.innerHTML = html || '<span>请先添加选项</span>';
+    }
+
+    function updateAllSubAnswerCheckboxes() {
+      subQuestionsContainer.querySelectorAll('.sub-question-row').forEach(row => {
+        const c = row.querySelector('.sq-answers');
+        if (c) updateAnswerCheckboxes(c);
+      });
+    }
+
+    function addOptionRow(value = '') {
+      const row = document.createElement('div');
+      row.className = 'opt-row';
+      row.innerHTML = `<input type="text" class="opt-input" placeholder="选项 ${String.fromCharCode(65 + document.querySelectorAll('.opt-input').length)}" value="${value}"><button type="button" class="remove-opt">✕</button>`;
+      row.querySelector('.remove-opt').addEventListener('click', () => {
+        if (document.querySelectorAll('.opt-row').length > 2) {
+          row.remove();
+          updateAnswerCheckboxes();
+          updateAllSubAnswerCheckboxes();
+        } else alert('至少保留两个选项');
+      });
+      optionsContainer.appendChild(row);
+      updateAnswerCheckboxes();
+      updateAllSubAnswerCheckboxes();
+    }
+
+    addOptionBtn.addEventListener('click', () => addOptionRow(''));
+    optionsContainer.addEventListener('input', (e) => {
+      if (e.target.classList.contains('opt-input')) {
+        updateAnswerCheckboxes();
+        updateAllSubAnswerCheckboxes();
+      }
+    });
+
+    function toggleQuestionArea() {
+      if (inputType.value === 'B') {
+        questionInputArea.style.display = 'none';
+        subQuestionsArea.style.display = 'block';
+        inputQuestion.disabled = true;
+        if (subQuestionsContainer.children.length === 0) { addSubQuestionRow(); addSubQuestionRow(); }
+      } else {
+        questionInputArea.style.display = 'block';
+        subQuestionsArea.style.display = 'none';
+        inputQuestion.disabled = false;
+        updateAnswerCheckboxes();
+      }
+    }
+
+    function addSubQuestionRow(text = '', answers = []) {
+      const row = document.createElement('div');
+      row.className = 'sub-question-row';
+      const idx = subQuestionsContainer.children.length + 1;
+      row.innerHTML = `
+        <div class="sq-header"><label>子题干 ${idx}</label><button type="button" class="del-sub">✕</button></div>
+        <textarea rows="2" placeholder="请输入子题干内容...">${text}</textarea>
+        <div class="sq-answers"></div>
+      `;
+      row.querySelector('.del-sub').addEventListener('click', () => {
+        if (subQuestionsContainer.children.length > 1) {
+          row.remove();
+          [...subQuestionsContainer.querySelectorAll('.sq-header label')].forEach((l, i) => l.textContent = `子题干 ${i+1}`);
+        } else alert('至少保留一个子题干');
+      });
+      subQuestionsContainer.appendChild(row);
+      updateAnswerCheckboxes(row.querySelector('.sq-answers'));
+      if (answers.length) {
+        const chks = row.querySelectorAll('.answer-chk');
+        answers.forEach(i => { if (chks[i]) chks[i].checked = true; });
+      }
+    }
+
+    addSubQuestionBtn.addEventListener('click', () => addSubQuestionRow());
+    inputType.addEventListener('change', toggleQuestionArea);
+
+    function openModal() {
+      document.getElementById('inputSubject').value = '西医综合';
+      document.getElementById('inputSub').value = '';
+      document.getElementById('inputChapter').value = '';
+      inputType.value = 'A';
+      optionsContainer.innerHTML = '';
+      addOptionRow(''); addOptionRow('');
+      subQuestionsContainer.innerHTML = '';
+      inputQuestion.value = '';
+      inputQuestion.disabled = false;
+      updateAnswerCheckboxes();
+      toggleQuestionArea();
+      modalOverlay.classList.add('active');
+    }
+
+    addBtn.addEventListener('click', openModal);
+    closeModalBtn.addEventListener('click', () => modalOverlay.classList.remove('active'));
+    cancelModalBtn.addEventListener('click', () => modalOverlay.classList.remove('active'));
+    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.classList.remove('active'); });
+
+    questionForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const subject = document.getElementById('inputSubject').value;
+      const subCategory = document.getElementById('inputSub').value.trim();
+      const chapter = document.getElementById('inputChapter').value.trim();
+      const type = inputType.value;
+      const options = Array.from(document.querySelectorAll('.opt-input')).map(inp => inp.value.trim()).filter(v => v);
+      if (options.length < 2) { alert('至少填写两个选项'); return; }
+      const toSave = [];
+      if (type === 'B') {
+        const rows = subQuestionsContainer.querySelectorAll('.sub-question-row');
+        if (rows.length === 0) { alert('请添加子题干'); return; }
+        for (const row of rows) {
+          const qText = row.querySelector('textarea').value.trim();
+          if (!qText) { alert('子题干不能为空'); return; }
+          const answer = Array.from(row.querySelectorAll('.answer-chk:checked')).map(cb => parseInt(cb.value));
+          if (answer.length === 0) { alert('请选择子题干答案'); return; }
+          toSave.push({ subject, subCategory, chapter, type, question: qText, options: options.slice(), answer });
+        }
+      } else {
+        const qText = inputQuestion.value.trim();
+        if (!qText) { alert('请输入题干'); return; }
+        const answer = Array.from(document.querySelectorAll('#answerCheckboxes .answer-chk:checked')).map(cb => parseInt(cb.value));
+        if (answer.length === 0) { alert('请选择答案'); return; }
+        toSave.push({ subject, subCategory, chapter, type, question: qText, options: options.slice(), answer });
+      }
+      try {
+        await saveQuestionsToAPI(toSave);
+        alert('保存成功');
+        modalOverlay.classList.remove('active');
+        await loadAllQuestions();
+        await refreshQuestions();
+      } catch (err) { alert('保存失败：' + err.message); }
+    });
+
     // ===================== 倒计时 =====================
     function updateCountdown() {
       const target = new Date('2026-12-19T00:00:00');
-      const now = new Date();
-      const diff = target - now;
-      if (diff <= 0) { document.getElementById('daysLeft').textContent = '🎉'; return; }
-      document.getElementById('daysLeft').textContent = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const diff = target - new Date();
+      document.getElementById('daysLeft').textContent = diff > 0 ? Math.floor(diff / (1000*60*60*24)) : '🎉';
     }
     updateCountdown();
     setInterval(updateCountdown, 60000);
 
-    // ===================== 初始化 =====================
-    (async function init() {
+    // 初始化
+    (async () => {
       await loadAllQuestions();
       await refreshQuestions();
     })();
