@@ -339,7 +339,6 @@
     const answerState = {};
     let wrongSet = new Set(JSON.parse(localStorage.getItem('wrongSet') || '[]'));
     let favSet = new Set(JSON.parse(localStorage.getItem('favSet') || '[]'));
-    // 不再使用 localStorage 存储笔记，改为云端存储
     let currentMode = 'all';
     let searchTerm = '';
 
@@ -368,7 +367,6 @@
     function saveLocalData() {
       localStorage.setItem('wrongSet', JSON.stringify([...wrongSet]));
       localStorage.setItem('favSet', JSON.stringify([...favSet]));
-      // 笔记已迁移到云端，不再存储到 localStorage
     }
 
     // ===================== API =====================
@@ -394,7 +392,42 @@
       if (!res.ok) throw new Error('删除失败');
     }
 
-    // ---- 笔记 API ----
+    // ---- 笔记 API（预签名上传） ----
+    /**
+     * 上传图片：先获取预签名 URL，再直接 PUT 到对象存储
+     * @param {number} questionId - 题目 ID
+     * @param {File} file - 图片文件
+     * @returns {Promise<{success: boolean, key: string}>}
+     */
+    async function uploadNoteImage(questionId, file) {
+      // 1. 请求后端生成预签名 URL
+      const res = await fetch('/api/upload/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId, fileName: file.name }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || '获取预签名 URL 失败');
+      }
+      const { url, key } = await res.json();
+
+      // 2. 使用预签名 URL 直接 PUT 文件
+      const putRes = await fetch(url, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+        },
+      });
+      if (!putRes.ok) {
+        throw new Error(`上传失败: ${putRes.status} ${putRes.statusText}`);
+      }
+
+      // 3. 返回存储 key
+      return { success: true, key };
+    }
+
     async function updateNotes(id, notes) {
       const res = await fetch('/api/questions/notes', {
         method: 'PATCH',
@@ -405,25 +438,7 @@
       return await res.json();
     }
 
-    async function uploadNoteImage(questionId, file) {
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('questionId', questionId);
-      const res = await fetch('/api/upload/image', {
-        method: 'POST',
-        body: formData,
-      });
-      if (!res.ok) throw new Error('图片上传失败');
-      return await res.json();
-    }
-
-    async function deleteImageFromR2(key) {
-      const res = await fetch(`/api/images?key=${encodeURIComponent(key)}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('删除图片失败');
-      return await res.json();
-    }
+    // 删除图片（本方案不使用）
 
     // ===================== 筛选下拉动态更新 =====================
     function updateSubFilterOptions() {
@@ -565,7 +580,6 @@
         }
         const isFav = favSet.has(q.id);
         const hasNote = q.notes && q.notes.trim().length > 0;
-        const noteIcon = hasNote ? '📝' : '';
         html += `
           <div class="question-item" data-qid="${q.id}">
             <div class="q-header">
@@ -756,14 +770,12 @@
     // 打开笔记模态框
     async function openNoteModal(qid) {
       currentNoteQid = qid;
-      // 从云端加载笔记
       let noteContent = await loadNoteFromCloud(qid);
       // 如果云端没有，尝试从本地迁移（兼容旧数据）
       if (!noteContent) {
         const localNotes = JSON.parse(localStorage.getItem('questionNotes') || '{}');
         if (localNotes[qid]) {
           noteContent = localNotes[qid];
-          // 自动迁移到云端
           try {
             await updateNotes(qid, noteContent);
             delete localNotes[qid];
@@ -796,12 +808,10 @@
         `;
       });
       noteImagePreviewList.innerHTML = html;
-      // 删除按钮：从文本中移除图片标记
       noteImagePreviewList.querySelectorAll('.del-img').forEach(btn => {
         btn.addEventListener('click', function() {
           const key = this.dataset.key;
           const currentText = noteTextarea.value;
-          // 移除对应的图片标记
           const regex = new RegExp(`!\\[.*?\\]\\(${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`, 'g');
           const newText = currentText.replace(regex, '');
           noteTextarea.value = newText;
@@ -833,10 +843,8 @@
       const content = noteTextarea.value.trim();
       try {
         await updateNotes(currentNoteQid, content);
-        // 更新本地 allQuestions 中的 notes 字段
         const q = allQuestions.find(item => item.id === currentNoteQid);
         if (q) q.notes = content;
-        // 刷新列表
         await refreshQuestions();
         closeNoteModalFn();
         alert('✅ 笔记已保存到云端');
@@ -845,7 +853,7 @@
       }
     });
 
-    // 图片上传
+    // 图片上传（使用预签名）
     noteImageInput.addEventListener('change', async function() {
       const files = this.files;
       if (!files || files.length === 0) return;
@@ -856,7 +864,6 @@
       }
 
       for (const file of files) {
-        // 限制单张 5MB
         if (file.size > 5 * 1024 * 1024) {
           alert(`图片 ${file.name} 超过 5MB，请压缩后上传`);
           continue;
@@ -864,16 +871,13 @@
         try {
           const result = await uploadNoteImage(currentNoteQid, file);
           if (result.success && result.key) {
-            // 在光标位置插入图片标记
             const cursorPos = noteTextarea.selectionStart;
             const textBefore = noteTextarea.value.substring(0, cursorPos);
             const textAfter = noteTextarea.value.substring(cursorPos);
             const markdown = `![${file.name}](${result.key})`;
             noteTextarea.value = textBefore + markdown + textAfter;
-            // 更新预览
             renderNotePreview(noteTextarea.value);
             updateImagePreviewList(noteTextarea.value);
-            // 光标移到插入内容后面
             const newPos = cursorPos + markdown.length;
             noteTextarea.selectionStart = newPos;
             noteTextarea.selectionEnd = newPos;
@@ -989,7 +993,6 @@
 
     // ===================== 导入导出 =====================
     document.getElementById('exportBtn').addEventListener('click', () => {
-      // 导出时剔除 notes 字段（可选），但保留 id 供参考
       const exportData = allQuestions.map(({ id, subject, subCategory, chapter, type, question, options, answer }) => ({
         id, subject, subCategory, chapter, type, question, options, answer
       }));
@@ -1000,7 +1003,6 @@
       a.click();
     });
 
-    // ---- 导入 ----
     document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFileInput').click());
     document.getElementById('importFileInput').addEventListener('change', async function() {
       const file = this.files[0];
@@ -1010,7 +1012,6 @@
         try {
           const data = JSON.parse(e.target.result);
           if (!Array.isArray(data)) throw new Error('格式错误');
-          // 移除 id 字段（由数据库自动生成）
           const cleanData = data.map(({ id, ...rest }) => rest);
           await saveQuestionsToAPI(cleanData);
           alert(`成功导入 ${cleanData.length} 道题目`);
@@ -1024,7 +1025,6 @@
       this.value = '';
     });
 
-    // ---- 下载导入模板 ----
     document.getElementById('downloadTemplateBtn').addEventListener('click', () => {
       const template = [
         {
@@ -1230,7 +1230,6 @@
               q.notes = localNotes[qid];
             }
           }
-          // 迁移后清除本地笔记
           localStorage.setItem('questionNotes', '{}');
           await refreshQuestions();
         }

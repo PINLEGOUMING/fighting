@@ -16,7 +16,6 @@ export async function onRequest(context) {
   const url = new URL(request.url);
 
   try {
-    // GET
     if (request.method === 'GET') {
       const subject = url.searchParams.get('subject') || '';
       const subCategory = url.searchParams.get('subCategory') || '';
@@ -52,7 +51,6 @@ export async function onRequest(context) {
       return new Response(JSON.stringify(questions), { headers });
     }
 
-    // POST
     if (request.method === 'POST') {
       const body = await request.json();
       if (!Array.isArray(body) || body.length === 0) {
@@ -91,7 +89,6 @@ export async function onRequest(context) {
       });
     }
 
-    // DELETE
     if (request.method === 'DELETE') {
       const id = url.searchParams.get('id');
       if (!id) {
