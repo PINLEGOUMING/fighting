@@ -1,6 +1,36 @@
 // functions/api/upload/image.js
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
 export async function onRequest(context) {
   const { request, env } = context;
+
+  // 从环境变量读取配置（若未设置则抛出错误）
+  const endpoint = env.BITIFUL_ENDPOINT || 'https://s3.bitiful.net';
+  const region = env.BITIFUL_REGION || 'us-east-1';
+  const bucket = env.BITIFUL_BUCKET;
+  const accessKeyId = env.BITIFUL_ACCESS_KEY_ID;
+  const secretAccessKey = env.BITIFUL_SECRET_ACCESS_KEY;
+
+  if (!bucket || !accessKeyId || !secretAccessKey) {
+    return new Response(
+      JSON.stringify({ error: '服务器配置缺失：请设置 BITIFUL_BUCKET, BITIFUL_ACCESS_KEY_ID, BITIFUL_SECRET_ACCESS_KEY' }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      }
+    );
+  }
+
+  const s3Client = new S3Client({
+    endpoint,
+    region,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+    forcePathStyle: true,        // 缤纷云通常需要路径风格
+    signatureVersion: 'v4',
+  });
 
   // CORS 预检
   if (request.method === 'OPTIONS') {
@@ -32,19 +62,21 @@ export async function onRequest(context) {
       });
     }
 
-    // 生成唯一键名
     const timestamp = Date.now();
     const fileName = file.name;
     const key = `notes/${questionId}/${timestamp}_${fileName}`;
 
-    // 读取文件二进制数据
     const arrayBuffer = await file.arrayBuffer();
-    const contentType = file.type || 'application/octet-stream';
+    const uint8Array = new Uint8Array(arrayBuffer);
 
-    // 存入 KV
-    await env.IMAGES.put(key, arrayBuffer, {
-      metadata: { contentType }, // 存储 Content-Type
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: uint8Array,
+      ContentType: file.type || 'application/octet-stream',
     });
+
+    await s3Client.send(command);
 
     return new Response(JSON.stringify({ success: true, key }), {
       status: 200,

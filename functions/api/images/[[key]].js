@@ -1,9 +1,42 @@
 // functions/api/images/[[key]].js
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
 export async function onRequest(context) {
   const { request, env, params } = context;
-  // 此时 params.key 是一个数组，如 ['notes', '1', '1786194005685_1234.jpg']
-  const key = params.key.join('/');   // 还原为 "notes/1/1786194005685_1234.jpg"
 
+  // 从环境变量读取配置
+  const endpoint = env.BITIFUL_ENDPOINT || 'https://s3.bitiful.net';
+  const region = env.BITIFUL_REGION || 'us-east-1';
+  const bucket = env.BITIFUL_BUCKET;
+  const accessKeyId = env.BITIFUL_ACCESS_KEY_ID;
+  const secretAccessKey = env.BITIFUL_SECRET_ACCESS_KEY;
+
+  if (!bucket || !accessKeyId || !secretAccessKey) {
+    return new Response(
+      JSON.stringify({ error: '服务器配置缺失：请设置 BITIFUL_BUCKET, BITIFUL_ACCESS_KEY_ID, BITIFUL_SECRET_ACCESS_KEY' }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      }
+    );
+  }
+
+  const s3Client = new S3Client({
+    endpoint,
+    region,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+    forcePathStyle: true,
+    signatureVersion: 'v4',
+  });
+
+  // 恢复完整的 key（路径可能包含多级目录）
+  const key = params.key ? params.key.join('/') : '';
+
+  // CORS 预检
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -29,25 +62,20 @@ export async function onRequest(context) {
   }
 
   try {
-    // 从 Cloudflare KV 命名空间读取（非 R2 对象存储）
-    const value = await env.IMAGES.get(key);
-    // if (value === null) {
-    //   return new Response(JSON.stringify({ error: '图片不存在' }), {
-    //     status: 404,
-    //     headers: { 'Content-Type': 'application/json' },
-    //   });
-    // }
+    // 生成预签名 GET URL（有效期 1 小时）
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    });
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 
-    // 获取元数据中的 Content-Type
-    const metadata = await env.IMAGES.getWithMetadata(key);
-    const contentType = metadata.metadata?.contentType || 'image/png';
-
-    return new Response(key, {
-      status: 200,
+    // 302 重定向到预签名 URL
+    return new Response(null, {
+      status: 302,
       headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=86400',
+        'Location': signedUrl,
         'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'no-cache',
       },
     });
 
@@ -55,7 +83,7 @@ export async function onRequest(context) {
     console.error(error);
     return new Response(JSON.stringify({ error: '读取图片失败: ' + error.message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   }
 }
