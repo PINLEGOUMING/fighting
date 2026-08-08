@@ -1,5 +1,5 @@
-// functions/api/upload/image.js
-import { AwsClient } from 'aws4fetch';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -41,33 +41,29 @@ export async function onRequest(context) {
     const timestamp = Date.now();
     const key = `notes/${questionId}/${timestamp}_${fileName}`;
 
-    // 路径风格 URL：https://s3.cstcloud.cn/page/notes/...
-    const objectUrl = new URL(`${S3_ENDPOINT}/${S3_BUCKET_NAME}/${key}`);
-    objectUrl.searchParams.set('X-Amz-Expires', '3600');
-
-    const aws = new AwsClient({
-      accessKeyId: S3_ACCESS_KEY_ID,
-      secretAccessKey: S3_SECRET_ACCESS_KEY,
+    // 创建 S3 客户端，强制路径风格
+    const client = new S3Client({
       region: S3_REGION || 'us-east-1',
-      service: 's3',
+      endpoint: S3_ENDPOINT,          // 例如 https://s3.cstcloud.cn
+      credentials: {
+        accessKeyId: S3_ACCESS_KEY_ID,
+        secretAccessKey: S3_SECRET_ACCESS_KEY,
+      },
+      forcePathStyle: true,           // 关键：使用路径风格
     });
 
-    // 签名时包含 Content-Type，并固定为 application/octet-stream
-    const signedRequest = await aws.sign(objectUrl.toString(), {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
-      aws: {
-        signQuery: true,
-        signedHeaders: 'host;content-type', // 关键：显式声明
-      },
+    const command = new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+      ContentType: 'application/octet-stream', // 签名时会包含此头
     });
+
+    const url = await getSignedUrl(client, command, { expiresIn: 3600 });
 
     return new Response(JSON.stringify({
       success: true,
-      url: signedRequest.url,
-      key: key,
+      url,
+      key,
     }), {
       status: 200,
       headers: {
@@ -77,6 +73,7 @@ export async function onRequest(context) {
     });
 
   } catch (error) {
+    console.error(error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
