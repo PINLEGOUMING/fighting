@@ -1,9 +1,11 @@
+// functions/api/upload/image.js
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export async function onRequest(context) {
   const { request, env } = context;
 
+  // CORS 预检
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -41,10 +43,10 @@ export async function onRequest(context) {
     const timestamp = Date.now();
     const key = `notes/${questionId}/${timestamp}_${fileName}`;
 
-    // 创建 S3 客户端，强制路径风格
+    // 创建 S3 客户端（强制路径风格）
     const client = new S3Client({
       region: S3_REGION || 'us-east-1',
-      endpoint: S3_ENDPOINT,          // 例如 https://s3.cstcloud.cn
+      endpoint: S3_ENDPOINT,          // https://s3.cstcloud.cn
       credentials: {
         accessKeyId: S3_ACCESS_KEY_ID,
         secretAccessKey: S3_SECRET_ACCESS_KEY,
@@ -53,11 +55,12 @@ export async function onRequest(context) {
     });
 
     const command = new PutObjectCommand({
-      Bucket: S3_BUCKET_NAME,
+      Bucket: S3_BUCKET_NAME,         // page
       Key: key,
-      ContentType: 'application/octet-stream', // 签名时会包含此头
+      ContentType: 'application/octet-stream', // 必须设置，签名时会包含此头
     });
 
+    // 生成预签名 URL，有效期 3600 秒
     const url = await getSignedUrl(client, command, { expiresIn: 3600 });
 
     return new Response(JSON.stringify({
