@@ -1,5 +1,3 @@
-// functions/api/questions.js
-
 export async function onRequest(context) {
   const { request, env } = context;
   const db = env.DB;
@@ -7,7 +5,7 @@ export async function onRequest(context) {
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 
@@ -18,9 +16,17 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const pathname = url.pathname;
 
+  // 仅当路径为 /api/questions 且方法匹配时处理
+  if (pathname !== '/api/questions') {
+    return new Response(JSON.stringify({ error: 'Not Found' }), {
+      status: 404,
+      headers,
+    });
+  }
+
   try {
-    // ================== GET /api/questions ==================
-    if (request.method === 'GET' && pathname === '/api/questions') {
+    // ================== GET ==================
+    if (request.method === 'GET') {
       const subject = url.searchParams.get('subject') || '';
       const subCategory = url.searchParams.get('subCategory') || '';
       const chapter = url.searchParams.get('chapter') || '';
@@ -55,8 +61,8 @@ export async function onRequest(context) {
       return new Response(JSON.stringify(questions), { headers });
     }
 
-    // ================== POST /api/questions ==================
-    if (request.method === 'POST' && pathname === '/api/questions') {
+    // ================== POST ==================
+    if (request.method === 'POST') {
       const body = await request.json();
       if (!Array.isArray(body) || body.length === 0) {
         return new Response(JSON.stringify({ error: '请求体必须是题目数组' }), {
@@ -94,8 +100,8 @@ export async function onRequest(context) {
       });
     }
 
-    // ================== DELETE /api/questions ==================
-    if (request.method === 'DELETE' && pathname === '/api/questions') {
+    // ================== DELETE ==================
+    if (request.method === 'DELETE') {
       const id = url.searchParams.get('id');
       if (!id) {
         return new Response(JSON.stringify({ error: '请提供要删除的题目 id' }), {
@@ -115,34 +121,9 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ success: true }), { headers });
     }
 
-    // ================== PATCH /api/questions/notes ==================
-    if (request.method === 'PATCH' && pathname === '/api/questions/notes') {
-      const { id, notes } = await request.json();
-      if (!id) {
-        return new Response(JSON.stringify({ error: '请提供题目 id' }), {
-          status: 400,
-          headers,
-        });
-      }
-
-      const { meta } = await db
-        .prepare('UPDATE Fighting SET notes = ? WHERE id = ?')
-        .bind(notes || '', id)
-        .run();
-
-      if (meta.changes === 0) {
-        return new Response(JSON.stringify({ error: '未找到该题目' }), {
-          status: 404,
-          headers,
-        });
-      }
-
-      return new Response(JSON.stringify({ success: true }), { headers });
-    }
-
-    // 其他路径返回 404
-    return new Response(JSON.stringify({ error: 'Not Found' }), {
-      status: 404,
+    // 其他方法
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
       headers,
     });
   } catch (error) {
