@@ -1,20 +1,8 @@
 // functions/api/questions.js
-import { AwsClient } from 'aws4fetch';
 
 export async function onRequest(context) {
   const { request, env } = context;
   const db = env.DB;
-
-  // 初始化 S3 客户端（使用 aws4fetch）
-  const s3 = new AwsClient({
-    accessKeyId: env.S3_ACCESS_KEY_ID,
-    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-    region: env.S3_REGION || 'us-east-1',
-    service: 's3',
-  });
-
-  const bucket = env.S3_BUCKET_NAME;
-  const endpoint = env.S3_ENDPOINT; // 如 https://s3.cstcloud.cn
 
   const headers = {
     'Content-Type': 'application/json',
@@ -31,7 +19,7 @@ export async function onRequest(context) {
   const pathname = url.pathname;
 
   try {
-    // ================== 获取题目列表 ==================
+    // ================== GET /api/questions ==================
     if (request.method === 'GET' && pathname === '/api/questions') {
       const subject = url.searchParams.get('subject') || '';
       const subCategory = url.searchParams.get('subCategory') || '';
@@ -67,7 +55,7 @@ export async function onRequest(context) {
       return new Response(JSON.stringify(questions), { headers });
     }
 
-    // ================== 新增题目 ==================
+    // ================== POST /api/questions ==================
     if (request.method === 'POST' && pathname === '/api/questions') {
       const body = await request.json();
       if (!Array.isArray(body) || body.length === 0) {
@@ -106,7 +94,7 @@ export async function onRequest(context) {
       });
     }
 
-    // ================== 删除题目 ==================
+    // ================== DELETE /api/questions ==================
     if (request.method === 'DELETE' && pathname === '/api/questions') {
       const id = url.searchParams.get('id');
       if (!id) {
@@ -127,7 +115,7 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ success: true }), { headers });
     }
 
-    // ================== 更新笔记 ==================
+    // ================== PATCH /api/questions/notes ==================
     if (request.method === 'PATCH' && pathname === '/api/questions/notes') {
       const { id, notes } = await request.json();
       if (!id) {
@@ -152,125 +140,8 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ success: true }), { headers });
     }
 
-    // ================== 上传图片到 S3 ==================
-    if (request.method === 'POST' && pathname === '/api/upload/image') {
-      const formData = await request.formData();
-      const file = formData.get('image');
-      const questionId = formData.get('questionId');
-
-      if (!file || !questionId) {
-        return new Response(JSON.stringify({ error: '缺少图片文件或题目ID' }), {
-          status: 400,
-          headers,
-        });
-      }
-
-      // 生成唯一文件名
-      const timestamp = Date.now();
-      const ext = file.name.split('.').pop() || 'png';
-      const key = `notes/${questionId}/${timestamp}_${file.name}`;
-
-      // 构造 S3 对象 URL（路径寻址：endpoint/bucket/key）
-      const s3Url = `${endpoint}/${bucket}/${key}`;
-
-      // 读取文件数据
-      const buffer = await file.arrayBuffer();
-
-      // 使用 aws4fetch 发送 PUT 请求
-      const putResponse = await s3.fetch(s3Url, {
-        method: 'PUT',
-        body: buffer,
-        headers: {
-          'Content-Type': file.type || 'image/png',
-          'Content-Length': buffer.byteLength.toString(),
-        },
-      });
-
-      if (!putResponse.ok) {
-        const errText = await putResponse.text();
-        throw new Error(`S3 上传失败: ${putResponse.status} ${errText}`);
-      }
-
-      return new Response(JSON.stringify({ success: true, key }), {
-        status: 200,
-        headers,
-      });
-    }
-
-    // ================== 获取图片（私有代理） ==================
-    if (request.method === 'GET' && pathname.startsWith('/api/images/')) {
-      const key = pathname.replace('/api/images/', '');
-      if (!key) {
-        return new Response(JSON.stringify({ error: '缺少图片 key' }), {
-          status: 400,
-          headers,
-        });
-      }
-
-      const s3Url = `${endpoint}/${bucket}/${key}`;
-
-      try {
-        // 使用 aws4fetch 发送 GET 请求（自动签名）
-        const getResponse = await s3.fetch(s3Url, {
-          method: 'GET',
-        });
-
-        if (!getResponse.ok) {
-          if (getResponse.status === 404) {
-            return new Response(JSON.stringify({ error: '图片不存在' }), {
-              status: 404,
-              headers,
-            });
-          }
-          throw new Error(`S3 获取失败: ${getResponse.status}`);
-        }
-
-        const contentType = getResponse.headers.get('content-type') || 'image/png';
-        const body = await getResponse.arrayBuffer();
-
-        return new Response(body, {
-          status: 200,
-          headers: {
-            'Content-Type': contentType,
-            'Cache-Control': 'public, max-age=86400',
-            'Access-Control-Allow-Origin': '*',
-          },
-        });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: '读取图片失败' }), {
-          status: 500,
-          headers,
-        });
-      }
-    }
-
-    // ================== 删除图片（可选，供清理使用） ==================
-    if (request.method === 'DELETE' && pathname === '/api/images') {
-      const key = url.searchParams.get('key');
-      if (!key) {
-        return new Response(JSON.stringify({ error: '缺少图片 key' }), {
-          status: 400,
-          headers,
-        });
-      }
-
-      const s3Url = `${endpoint}/${bucket}/${key}`;
-      try {
-        const deleteResponse = await s3.fetch(s3Url, { method: 'DELETE' });
-        if (!deleteResponse.ok) {
-          throw new Error(`S3 删除失败: ${deleteResponse.status}`);
-        }
-        return new Response(JSON.stringify({ success: true }), { headers });
-      } catch (err) {
-        return new Response(JSON.stringify({ error: '删除图片失败' }), {
-          status: 500,
-          headers,
-        });
-      }
-    }
-
-    // 其他请求
-    return new Response(JSON.stringify({ error: '接口不存在' }), {
+    // 其他路径返回 404
+    return new Response(JSON.stringify({ error: 'Not Found' }), {
       status: 404,
       headers,
     });
