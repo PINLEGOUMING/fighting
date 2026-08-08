@@ -30,7 +30,7 @@ export async function onRequest(context) {
 
   try {
     // 从 Cloudflare KV 命名空间读取（非 R2 对象存储）
-    const value = await env.IMAGES.get(key, { type: 'arrayBuffer' });
+    const value = await env.IMAGES.get(key);
     if (value === null) {
       return new Response(JSON.stringify({ error: '图片不存在' }), {
         status: 404,
@@ -39,7 +39,7 @@ export async function onRequest(context) {
     }
 
     // 获取元数据中的 Content-Type
-    const metadata = await env.IMAGES.getWithMetadata(key, { type: 'arrayBuffer' });
+    const metadata = await env.IMAGES.getWithMetadata(key);
     const contentType = metadata.metadata?.contentType || 'image/png';
 
     return new Response(value, {
