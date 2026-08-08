@@ -46,6 +46,7 @@
       --options-editor-bg: #f2f8fc;
       --sub-row-bg: #f7fbfe;
       --sub-row-border: #d4e4ed;
+      --note-preview-bg: #f7fbfe;
     }
 
     body.dark {
@@ -89,6 +90,7 @@
       --options-editor-bg: #1e2e40;
       --sub-row-bg: #1e2e40;
       --sub-row-border: #3a506b;
+      --note-preview-bg: #1e2e40;
       color-scheme: dark;
     }
 
@@ -108,7 +110,7 @@
     .filter-group { display: flex; flex-direction: column; gap: 4px; flex: 1 0 130px; }
     .filter-group label { font-size: 13px; font-weight: 500; color: var(--filter-label); }
     .filter-group select, .filter-group input { padding: 10px 12px; border-radius: 40px; border: 1px solid var(--filter-input-border); background: var(--filter-input-bg); font-size: 15px; outline: none; color: var(--text-primary); }
-    .filter-group select { -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2220%22%20height%3D%2220%22%3E%3Cpath%20d%3D%22M5%206l5%205%205-5%22%20stroke%3D%22%23333%22%20stroke-width%3D%222%22%20fill%3D%22none%22/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; padding-right: 30px; }
+    .filter-group select { -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%2220%22%20height%3D%2220%22%3E%3Cpath%20d%3D%22M5%206l5%205%205-5%22%20stroke%3D%22%23333%22%20stroke-width%3D%222%22%20fill%3D%22none%22/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; padding-right: 30px; }
     .filter-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; }
     .filter-actions button, .filter-actions .btn { flex: 1 1 auto; min-height: 44px; }
     .search-box { position: relative; flex: 2 0 200px; }
@@ -126,6 +128,7 @@
     .btn-outline:hover { background: rgba(100,150,200,0.1); }
     .btn-danger { background: var(--btn-danger-bg); color: white; border: 1px solid #a93226; }
     .btn-active { background: #4a8ab5; color: white !important; }
+    .btn-small { padding: 4px 12px; font-size: 13px; min-height: 32px; }
 
     .question-list { background: var(--list-bg); border-radius: 16px; padding: 16px 16px 24px; box-shadow: 0 2px 12px rgba(0,40,70,0.04); border: 1px solid var(--list-border); min-height: 150px; }
     .question-list h2 { font-size: 17px; font-weight: 500; color: var(--banner-text); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
@@ -186,6 +189,25 @@
     .quiz-question { flex: 1; }
     .quiz-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: center; }
     .quiz-result { text-align: center; padding: 20px; }
+
+    /* ---- 笔记相关样式 ---- */
+    .note-editor-area { margin: 8px 0 12px; }
+    .note-editor-area textarea { width: 100%; min-height: 120px; border-radius: 12px; padding: 12px; border: 1px solid var(--filter-input-border); background: var(--form-bg); color: var(--text-primary); font-size: 14px; line-height: 1.6; resize: vertical; }
+    .note-image-upload { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 6px 0 10px; }
+    .note-image-upload .file-input-wrap { position: relative; overflow: hidden; }
+    .note-image-upload .file-input-wrap input[type="file"] { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    .note-preview { background: var(--note-preview-bg); border-radius: 12px; padding: 12px 14px; margin-top: 8px; border: 1px solid var(--sub-row-border); }
+    .note-preview .note-content { line-height: 1.7; word-break: break-word; }
+    .note-preview .note-content img { max-width: 100%; max-height: 300px; border-radius: 8px; margin: 6px 0; border: 1px solid var(--sub-row-border); }
+    .note-preview .note-content p { margin: 4px 0; }
+    .note-preview .note-empty { color: var(--text-secondary); font-style: italic; }
+    .note-image-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .note-image-list .img-thumb { position: relative; width: 60px; height: 60px; border-radius: 6px; overflow: hidden; border: 1px solid var(--sub-row-border); background: var(--bg); }
+    .note-image-list .img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .note-image-list .img-thumb .del-img { position: absolute; top: -6px; right: -6px; background: var(--btn-danger-bg); color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; line-height: 20px; text-align: center; cursor: pointer; }
+
+    .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+    .form-actions .btn { min-height: 44px; }
   </style>
 </head>
 <body>
@@ -218,6 +240,7 @@
     <button class="btn btn-outline" id="randomQuizBtn">🎲 随机练习</button>
     <button class="btn btn-outline" id="exportBtn">📤 导出</button>
     <button class="btn btn-outline" id="importBtn">📥 导入</button>
+    <button class="btn btn-outline" id="downloadTemplateBtn">📄 下载模板</button>
   </div>
 
   <div class="question-list">
@@ -273,12 +296,30 @@
   </div>
 </div>
 
-<!-- 笔记模态框 -->
+<!-- ===== 笔记模态框（支持图片上传） ===== -->
 <div class="modal-overlay" id="noteModalOverlay">
   <div class="modal-box">
     <h2>📝 题目笔记 <button class="close-btn" id="closeNoteModal">×</button></h2>
-    <textarea id="noteTextarea" rows="6" style="width:100%; border-radius:12px; padding:12px; border:1px solid #cfe0eb; background:var(--form-bg); color:var(--text-primary);"></textarea>
-    <div class="form-actions"><button class="btn btn-primary" id="saveNoteBtn">保存笔记</button></div>
+    <div class="note-editor-area">
+      <textarea id="noteTextarea" rows="6" placeholder="输入笔记内容，支持 Markdown 格式...&#10;上传图片后会自动插入 ![](图片key) 标记"></textarea>
+      <div class="note-image-upload">
+        <span style="font-size:13px;color:var(--filter-label);">📎 插入图片：</span>
+        <div class="file-input-wrap btn btn-outline btn-small">
+          选择图片
+          <input type="file" id="noteImageInput" accept="image/*" multiple>
+        </div>
+        <span style="font-size:12px;color:var(--text-secondary);">（支持 jpg/png/gif/webp，单张 ≤ 5MB）</span>
+      </div>
+      <div id="noteImagePreviewList" class="note-image-list"></div>
+    </div>
+    <div class="note-preview" id="notePreviewArea">
+      <div style="font-size:13px;font-weight:500;color:var(--filter-label);margin-bottom:4px;">📖 预览</div>
+      <div id="notePreviewContent" class="note-content"><span class="note-empty">笔记预览将显示在这里</span></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" id="cancelNoteBtn">取消</button>
+      <button class="btn btn-primary" id="saveNoteBtn">💾 保存笔记</button>
+    </div>
   </div>
 </div>
 
@@ -287,7 +328,7 @@
   <div class="modal-box" id="quizModalBox"></div>
 </div>
 
-<!-- 导入文件选择器（隐藏） -->
+<!-- 导入文件选择器 -->
 <input type="file" id="importFileInput" accept=".json" style="display:none;">
 
 <script>
@@ -298,11 +339,16 @@
     const answerState = {};
     let wrongSet = new Set(JSON.parse(localStorage.getItem('wrongSet') || '[]'));
     let favSet = new Set(JSON.parse(localStorage.getItem('favSet') || '[]'));
-    let notes = JSON.parse(localStorage.getItem('questionNotes') || '{}');
+    // 不再使用 localStorage 存储笔记，改为云端存储
     let currentMode = 'all';
     let searchTerm = '';
 
-    // 夜间模式
+    // 当前编辑笔记的题目 ID
+    let currentNoteQid = null;
+    // 当前笔记中已上传的图片 key 列表（用于预览和删除）
+    let currentNoteImages = [];
+
+    // ===================== 主题 =====================
     const themeToggle = document.getElementById('themeToggle');
     function applyTheme() {
       if (localStorage.getItem('theme') === 'dark') {
@@ -322,7 +368,7 @@
     function saveLocalData() {
       localStorage.setItem('wrongSet', JSON.stringify([...wrongSet]));
       localStorage.setItem('favSet', JSON.stringify([...favSet]));
-      localStorage.setItem('questionNotes', JSON.stringify(notes));
+      // 笔记已迁移到云端，不再存储到 localStorage
     }
 
     // ===================== API =====================
@@ -346,6 +392,37 @@
     async function deleteQuestion(id) {
       const res = await fetch(`/api/questions?id=${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('删除失败');
+    }
+
+    // ---- 笔记 API ----
+    async function updateNotes(id, notes) {
+      const res = await fetch('/api/questions/notes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, notes }),
+      });
+      if (!res.ok) throw new Error('保存笔记失败');
+      return await res.json();
+    }
+
+    async function uploadNoteImage(questionId, file) {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('questionId', questionId);
+      const res = await fetch('/api/upload/image', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error('图片上传失败');
+      return await res.json();
+    }
+
+    async function deleteImageFromR2(key) {
+      const res = await fetch(`/api/images?key=${encodeURIComponent(key)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('删除图片失败');
+      return await res.json();
     }
 
     // ===================== 筛选下拉动态更新 =====================
@@ -487,7 +564,8 @@
           resultHtml += `<div class="q-answer-display">✅ 正确答案：${q.answer.map(i => String.fromCharCode(65 + i)).join('、')}</div>`;
         }
         const isFav = favSet.has(q.id);
-        const noteText = notes[q.id] ? '📝' : '';
+        const hasNote = q.notes && q.notes.trim().length > 0;
+        const noteIcon = hasNote ? '📝' : '';
         html += `
           <div class="question-item" data-qid="${q.id}">
             <div class="q-header">
@@ -495,14 +573,15 @@
               <span class="q-subject">${q.subCategory || '未分类'}</span>
               <span class="q-chapter">${q.chapter || '无章节'}</span>
               <span class="q-type">${typeLabel}</span>
+              ${hasNote ? `<span class="note-indicator">📝</span>` : ''}
             </div>
-            <div class="q-text">${q.question} ${noteText}</div>
+            <div class="q-text">${q.question}</div>
             <div class="q-options" data-qid="${q.id}">${optionsHtml}</div>
             <div class="q-actions">
               <button class="btn btn-primary submit-answer" data-qid="${q.id}">📤 提交答案</button>
               ${submitted ? `<button class="btn btn-outline reset-answer" data-qid="${q.id}">🔄 重做</button>` : ''}
               <button class="btn btn-outline fav-toggle" data-qid="${q.id}">${isFav ? '❤️' : '🤍'} 收藏</button>
-              <button class="btn btn-outline note-btn" data-qid="${q.id}">📝 笔记</button>
+              <button class="btn btn-outline note-btn" data-qid="${q.id}">📝 笔记${hasNote ? ' ✨' : ''}</button>
               <button class="btn btn-danger delete-question" data-qid="${q.id}">🗑️ 删除</button>
             </div>
             ${resultHtml}
@@ -511,7 +590,7 @@
       });
       container.innerHTML = html;
 
-      // 事件绑定（选项、提交、重做、收藏、笔记、删除）—— 保持原样
+      // 事件绑定
       container.querySelectorAll('.opt-btn').forEach(btn => {
         btn.addEventListener('click', function() {
           const qid = parseInt(this.dataset.qid);
@@ -585,7 +664,6 @@
             allQuestions = allQuestions.filter(q => q.id !== qid);
             wrongSet.delete(qid);
             favSet.delete(qid);
-            delete notes[qid];
             saveLocalData();
             await refreshQuestions();
           } catch (e) { alert('删除失败'); }
@@ -627,23 +705,193 @@
       });
     }
 
-    // ===================== 笔记 =====================
-    let currentNoteQid = null;
-    function openNoteModal(qid) {
-      currentNoteQid = qid;
-      document.getElementById('noteTextarea').value = notes[qid] || '';
-      document.getElementById('noteModalOverlay').classList.add('active');
-    }
-    document.getElementById('closeNoteModal').addEventListener('click', () => {
-      document.getElementById('noteModalOverlay').classList.remove('active');
-    });
-    document.getElementById('saveNoteBtn').addEventListener('click', () => {
-      if (currentNoteQid) {
-        notes[currentNoteQid] = document.getElementById('noteTextarea').value.trim();
-        saveLocalData();
-        document.getElementById('noteModalOverlay').classList.remove('active');
-        renderQuestions();
+    // ===================== 笔记（云端 + 图片） =====================
+    const noteModalOverlay = document.getElementById('noteModalOverlay');
+    const noteTextarea = document.getElementById('noteTextarea');
+    const notePreviewContent = document.getElementById('notePreviewContent');
+    const noteImageInput = document.getElementById('noteImageInput');
+    const noteImagePreviewList = document.getElementById('noteImagePreviewList');
+    const saveNoteBtn = document.getElementById('saveNoteBtn');
+    const closeNoteModal = document.getElementById('closeNoteModal');
+    const cancelNoteBtn = document.getElementById('cancelNoteBtn');
+
+    // 解析笔记中的图片标记，提取 key
+    function extractImageKeys(text) {
+      const regex = /!\[.*?\]\(([^)]+)\)/g;
+      const keys = [];
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        keys.push(match[1]);
       }
+      return keys;
+    }
+
+    // 渲染笔记预览（将 ![alt](key) 替换为 <img>）
+    function renderNotePreview(text) {
+      if (!text || !text.trim()) {
+        notePreviewContent.innerHTML = '<span class="note-empty">笔记预览将显示在这里</span>';
+        return;
+      }
+      // 转义 HTML，但保留图片标记
+      let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // 将 ![alt](key) 替换为 img 标签
+      html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, key) => {
+        const imgUrl = `/api/images/${encodeURIComponent(key)}`;
+        return `<img src="${imgUrl}" alt="${alt || '图片'}" loading="lazy" onerror="this.style.display='none'" />`;
+      });
+      // 换行转 <br>
+      html = html.replace(/\n/g, '<br>');
+      notePreviewContent.innerHTML = html;
+    }
+
+    // 从云端加载笔记
+    async function loadNoteFromCloud(qid) {
+      const q = allQuestions.find(item => item.id === qid);
+      if (q && q.notes) {
+        return q.notes;
+      }
+      return '';
+    }
+
+    // 打开笔记模态框
+    async function openNoteModal(qid) {
+      currentNoteQid = qid;
+      // 从云端加载笔记
+      let noteContent = await loadNoteFromCloud(qid);
+      // 如果云端没有，尝试从本地迁移（兼容旧数据）
+      if (!noteContent) {
+        const localNotes = JSON.parse(localStorage.getItem('questionNotes') || '{}');
+        if (localNotes[qid]) {
+          noteContent = localNotes[qid];
+          // 自动迁移到云端
+          try {
+            await updateNotes(qid, noteContent);
+            delete localNotes[qid];
+            localStorage.setItem('questionNotes', JSON.stringify(localNotes));
+          } catch (e) { /* 忽略迁移失败 */ }
+        }
+      }
+      noteTextarea.value = noteContent || '';
+      renderNotePreview(noteContent || '');
+      // 更新图片预览列表
+      updateImagePreviewList(noteContent || '');
+      noteModalOverlay.classList.add('active');
+    }
+
+    // 更新图片预览列表（显示当前笔记中所有图片）
+    function updateImagePreviewList(text) {
+      const keys = extractImageKeys(text || '');
+      if (keys.length === 0) {
+        noteImagePreviewList.innerHTML = '';
+        return;
+      }
+      let html = '';
+      keys.forEach(key => {
+        const imgUrl = `/api/images/${encodeURIComponent(key)}`;
+        html += `
+          <div class="img-thumb" data-key="${key}">
+            <img src="${imgUrl}" loading="lazy" onerror="this.style.display='none'" />
+            <button class="del-img" data-key="${key}" title="从笔记中移除该图片引用（不会删除云端图片）">✕</button>
+          </div>
+        `;
+      });
+      noteImagePreviewList.innerHTML = html;
+      // 删除按钮：从文本中移除图片标记
+      noteImagePreviewList.querySelectorAll('.del-img').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const key = this.dataset.key;
+          const currentText = noteTextarea.value;
+          // 移除对应的图片标记
+          const regex = new RegExp(`!\\[.*?\\]\\(${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`, 'g');
+          const newText = currentText.replace(regex, '');
+          noteTextarea.value = newText;
+          renderNotePreview(newText);
+          updateImagePreviewList(newText);
+        });
+      });
+    }
+
+    // 关闭笔记模态框
+    function closeNoteModalFn() {
+      noteModalOverlay.classList.remove('active');
+      currentNoteQid = null;
+      noteTextarea.value = '';
+      notePreviewContent.innerHTML = '<span class="note-empty">笔记预览将显示在这里</span>';
+      noteImagePreviewList.innerHTML = '';
+      noteImageInput.value = '';
+    }
+
+    closeNoteModal.addEventListener('click', closeNoteModalFn);
+    cancelNoteBtn.addEventListener('click', closeNoteModalFn);
+    noteModalOverlay.addEventListener('click', (e) => {
+      if (e.target === noteModalOverlay) closeNoteModalFn();
+    });
+
+    // 保存笔记
+    saveNoteBtn.addEventListener('click', async function() {
+      if (!currentNoteQid) return;
+      const content = noteTextarea.value.trim();
+      try {
+        await updateNotes(currentNoteQid, content);
+        // 更新本地 allQuestions 中的 notes 字段
+        const q = allQuestions.find(item => item.id === currentNoteQid);
+        if (q) q.notes = content;
+        // 刷新列表
+        await refreshQuestions();
+        closeNoteModalFn();
+        alert('✅ 笔记已保存到云端');
+      } catch (e) {
+        alert('保存笔记失败：' + e.message);
+      }
+    });
+
+    // 图片上传
+    noteImageInput.addEventListener('change', async function() {
+      const files = this.files;
+      if (!files || files.length === 0) return;
+      if (!currentNoteQid) {
+        alert('请先打开一个题目的笔记');
+        this.value = '';
+        return;
+      }
+
+      for (const file of files) {
+        // 限制单张 5MB
+        if (file.size > 5 * 1024 * 1024) {
+          alert(`图片 ${file.name} 超过 5MB，请压缩后上传`);
+          continue;
+        }
+        try {
+          const result = await uploadNoteImage(currentNoteQid, file);
+          if (result.success && result.key) {
+            // 在光标位置插入图片标记
+            const cursorPos = noteTextarea.selectionStart;
+            const textBefore = noteTextarea.value.substring(0, cursorPos);
+            const textAfter = noteTextarea.value.substring(cursorPos);
+            const markdown = `![${file.name}](${result.key})`;
+            noteTextarea.value = textBefore + markdown + textAfter;
+            // 更新预览
+            renderNotePreview(noteTextarea.value);
+            updateImagePreviewList(noteTextarea.value);
+            // 光标移到插入内容后面
+            const newPos = cursorPos + markdown.length;
+            noteTextarea.selectionStart = newPos;
+            noteTextarea.selectionEnd = newPos;
+            noteTextarea.focus();
+          } else {
+            alert(`上传 ${file.name} 失败`);
+          }
+        } catch (e) {
+          alert(`上传 ${file.name} 失败：${e.message}`);
+        }
+      }
+      this.value = '';
+    });
+
+    // 实时预览
+    noteTextarea.addEventListener('input', function() {
+      renderNotePreview(this.value);
+      updateImagePreviewList(this.value);
     });
 
     // ===================== 随机练习 =====================
@@ -667,6 +915,7 @@
     }
 
     let quizQuestions = [], quizIndex = 0, quizAnswers = [];
+
     function startQuiz(count) {
       quizQuestions = [...allQuestions].sort(() => Math.random() - 0.5).slice(0, Math.min(count, allQuestions.length));
       quizIndex = 0;
@@ -740,13 +989,18 @@
 
     // ===================== 导入导出 =====================
     document.getElementById('exportBtn').addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(allQuestions, null, 2)], { type: 'application/json' });
+      // 导出时剔除 notes 字段（可选），但保留 id 供参考
+      const exportData = allQuestions.map(({ id, subject, subCategory, chapter, type, question, options, answer }) => ({
+        id, subject, subCategory, chapter, type, question, options, answer
+      }));
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = `kaoyan_questions_${new Date().toISOString().slice(0,10)}.json`;
       a.click();
     });
 
+    // ---- 导入 ----
     document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFileInput').click());
     document.getElementById('importFileInput').addEventListener('change', async function() {
       const file = this.files[0];
@@ -756,14 +1010,48 @@
         try {
           const data = JSON.parse(e.target.result);
           if (!Array.isArray(data)) throw new Error('格式错误');
-          await saveQuestionsToAPI(data);
-          alert(`成功导入 ${data.length} 道题目`);
+          // 移除 id 字段（由数据库自动生成）
+          const cleanData = data.map(({ id, ...rest }) => rest);
+          await saveQuestionsToAPI(cleanData);
+          alert(`成功导入 ${cleanData.length} 道题目`);
           await loadAllQuestions();
           await refreshQuestions();
-        } catch (err) { alert('导入失败：' + err.message); }
+        } catch (err) {
+          alert('导入失败：' + err.message);
+        }
       };
       reader.readAsText(file);
       this.value = '';
+    });
+
+    // ---- 下载导入模板 ----
+    document.getElementById('downloadTemplateBtn').addEventListener('click', () => {
+      const template = [
+        {
+          "subject": "西医综合",
+          "subCategory": "内科学",
+          "chapter": "呼吸系统",
+          "type": "A",
+          "question": "慢性阻塞性肺疾病的主要特征是？",
+          "options": ["气流受限", "肺功能下降", "呼吸困难", "咳嗽咳痰"],
+          "answer": [0]
+        },
+        {
+          "subject": "政治",
+          "subCategory": "马克思主义基本原理",
+          "chapter": "唯物辩证法",
+          "type": "X",
+          "question": "下列属于唯物辩证法基本规律的有？",
+          "options": ["对立统一规律", "质量互变规律", "否定之否定规律", "价值规律"],
+          "answer": [0, 1, 2]
+        }
+      ];
+      const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `导入模板_考研题库.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
     });
 
     // ===================== 录入题目 =====================
@@ -926,10 +1214,27 @@
     updateCountdown();
     setInterval(updateCountdown, 60000);
 
-    // 初始化
+    // ===================== 初始化 =====================
     (async () => {
       await loadAllQuestions();
       await refreshQuestions();
+      // 迁移本地笔记到云端（一次性后台迁移）
+      try {
+        const localNotes = JSON.parse(localStorage.getItem('questionNotes') || '{}');
+        const keys = Object.keys(localNotes);
+        if (keys.length > 0) {
+          for (const qid of keys) {
+            const q = allQuestions.find(item => item.id === parseInt(qid));
+            if (q && !q.notes) {
+              await updateNotes(parseInt(qid), localNotes[qid]);
+              q.notes = localNotes[qid];
+            }
+          }
+          // 迁移后清除本地笔记
+          localStorage.setItem('questionNotes', '{}');
+          await refreshQuestions();
+        }
+      } catch (e) { /* 忽略迁移错误 */ }
     })();
   })();
 </script>
