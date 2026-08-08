@@ -400,7 +400,6 @@
      * @returns {Promise<{success: boolean, key: string}>}
      */
     async function uploadNoteImage(questionId, file) {
-      // 1. 请求后端生成预签名 URL
       const res = await fetch('/api/upload/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -412,19 +411,17 @@
       }
       const { url, key } = await res.json();
 
-      // 2. 使用预签名 URL 直接 PUT 文件
       const putRes = await fetch(url, {
         method: 'PUT',
         body: file,
         headers: {
-          'Content-Type': file.type || 'application/octet-stream',
+          'Content-Type': 'application/octet-stream', // 与签名一致
         },
       });
       if (!putRes.ok) {
         throw new Error(`上传失败: ${putRes.status} ${putRes.statusText}`);
       }
 
-      // 3. 返回存储 key
       return { success: true, key };
     }
 

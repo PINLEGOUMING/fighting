@@ -1,9 +1,9 @@
+// functions/api/upload/image.js
 import { AwsClient } from 'aws4fetch';
 
 export async function onRequest(context) {
   const { request, env } = context;
 
-  // CORS 预检
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -39,12 +39,11 @@ export async function onRequest(context) {
     }
 
     const timestamp = Date.now();
-    const ext = fileName.split('.').pop() || 'png';
     const key = `notes/${questionId}/${timestamp}_${fileName}`;
 
-    // 构建对象 URL
+    // 路径风格 URL：https://s3.cstcloud.cn/page/notes/...
     const objectUrl = new URL(`${S3_ENDPOINT}/${S3_BUCKET_NAME}/${key}`);
-    objectUrl.searchParams.set('X-Amz-Expires', '3600'); // 1 小时有效期
+    objectUrl.searchParams.set('X-Amz-Expires', '3600');
 
     const aws = new AwsClient({
       accessKeyId: S3_ACCESS_KEY_ID,
@@ -53,13 +52,16 @@ export async function onRequest(context) {
       service: 's3',
     });
 
-    // 生成预签名 URL（签名放在查询参数）
+    // 签名时包含 Content-Type，并固定为 application/octet-stream
     const signedRequest = await aws.sign(objectUrl.toString(), {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/octet-stream', // 实际会被覆盖
+        'Content-Type': 'application/octet-stream',
       },
-      aws: { signQuery: true },
+      aws: {
+        signQuery: true,
+        signedHeaders: 'host;content-type', // 关键：显式声明
+      },
     });
 
     return new Response(JSON.stringify({
