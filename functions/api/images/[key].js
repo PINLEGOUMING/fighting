@@ -1,25 +1,7 @@
-import { AwsClient } from 'aws4fetch';
-
+// functions/api/images/[key].js
 export async function onRequest(context) {
   const { request, env, params } = context;
   const { key } = params;
-
-  if (!env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY || !env.S3_BUCKET_NAME || !env.S3_ENDPOINT) {
-    return new Response(JSON.stringify({ error: 'S3 环境变量未配置' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
-  }
-
-  const s3 = new AwsClient({
-    accessKeyId: env.S3_ACCESS_KEY_ID,
-    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-    region: env.S3_REGION || 'us-east-1',
-    service: 's3',
-  });
-
-  const bucket = env.S3_BUCKET_NAME;
-  const endpoint = env.S3_ENDPOINT;
 
   if (request.method === 'OPTIONS') {
     return new Response(null, {
@@ -46,23 +28,20 @@ export async function onRequest(context) {
   }
 
   try {
-    const s3Url = `${endpoint}/${bucket}/${key}`;
-    const getResponse = await s3.fetch(s3Url, { method: 'GET' });
-
-    if (!getResponse.ok) {
-      if (getResponse.status === 404) {
-        return new Response(JSON.stringify({ error: '图片不存在' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      throw new Error(`S3 获取失败: ${getResponse.status}`);
+    // 从 KV 读取
+    const value = await env.IMAGES.get(key, { type: 'arrayBuffer' });
+    if (value === null) {
+      return new Response(JSON.stringify({ error: '图片不存在' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    const contentType = getResponse.headers.get('content-type') || 'image/png';
-    const body = await getResponse.arrayBuffer();
+    // 获取元数据（Content-Type）
+    const metadata = await env.IMAGES.getWithMetadata(key, { type: 'arrayBuffer' });
+    const contentType = metadata.metadata?.contentType || 'image/png';
 
-    return new Response(body, {
+    return new Response(value, {
       status: 200,
       headers: {
         'Content-Type': contentType,
@@ -70,7 +49,9 @@ export async function onRequest(context) {
         'Access-Control-Allow-Origin': '*',
       },
     });
+
   } catch (error) {
+    console.error(error);
     return new Response(JSON.stringify({ error: '读取图片失败: ' + error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

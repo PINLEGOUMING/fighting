@@ -1,7 +1,4 @@
 // functions/api/upload/image.js
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-
 export async function onRequest(context) {
   const { request, env } = context;
 
@@ -23,51 +20,33 @@ export async function onRequest(context) {
     });
   }
 
-  const { S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET_NAME, S3_ENDPOINT, S3_REGION } = env;
-  if (!S3_ACCESS_KEY_ID || !S3_SECRET_ACCESS_KEY || !S3_BUCKET_NAME || !S3_ENDPOINT) {
-    return new Response(JSON.stringify({ error: 'S3 环境变量未配置' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    });
-  }
-
   try {
-    const { questionId, fileName } = await request.json();
-    if (!questionId || !fileName) {
-      return new Response(JSON.stringify({ error: '缺少 questionId 或 fileName' }), {
+    const formData = await request.formData();
+    const file = formData.get('image');
+    const questionId = formData.get('questionId');
+
+    if (!file || !questionId) {
+      return new Response(JSON.stringify({ error: '缺少图片文件或题目ID' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       });
     }
 
+    // 生成唯一键名
     const timestamp = Date.now();
+    const fileName = file.name;
     const key = `notes/${questionId}/${timestamp}_${fileName}`;
 
-    // 创建 S3 客户端（强制路径风格）
-    const client = new S3Client({
-      region: S3_REGION || 'us-east-1',
-      endpoint: S3_ENDPOINT,          // https://s3.cstcloud.cn
-      credentials: {
-        accessKeyId: S3_ACCESS_KEY_ID,
-        secretAccessKey: S3_SECRET_ACCESS_KEY,
-      },
-      forcePathStyle: true,           // 关键：使用路径风格
+    // 读取文件二进制数据
+    const arrayBuffer = await file.arrayBuffer();
+    const contentType = file.type || 'application/octet-stream';
+
+    // 存入 KV
+    await env.IMAGES.put(key, arrayBuffer, {
+      metadata: { contentType }, // 存储 Content-Type
     });
 
-    const command = new PutObjectCommand({
-      Bucket: S3_BUCKET_NAME,         // page
-      Key: key,
-      ContentType: 'application/octet-stream', // 必须设置，签名时会包含此头
-    });
-
-    // 生成预签名 URL，有效期 3600 秒
-    const url = await getSignedUrl(client, command, { expiresIn: 3600 });
-
-    return new Response(JSON.stringify({
-      success: true,
-      url,
-      key,
-    }), {
+    return new Response(JSON.stringify({ success: true, key }), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
