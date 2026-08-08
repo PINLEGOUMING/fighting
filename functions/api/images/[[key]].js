@@ -1,7 +1,8 @@
-// functions/api/images/[key].js
+// functions/api/images/[[key]].js
 export async function onRequest(context) {
   const { request, env, params } = context;
-  const { key } = params;
+  // 此时 params.key 是一个数组，如 ['notes', '1', '1786194005685_1234.jpg']
+  const key = params.key.join('/');   // 还原为 "notes/1/1786194005685_1234.jpg"
 
   if (request.method === 'OPTIONS') {
     return new Response(null, {
@@ -28,7 +29,7 @@ export async function onRequest(context) {
   }
 
   try {
-    // 从 KV 读取
+    // 从 Cloudflare KV 命名空间读取（非 R2 对象存储）
     const value = await env.IMAGES.get(key, { type: 'arrayBuffer' });
     if (value === null) {
       return new Response(JSON.stringify({ error: '图片不存在' }), {
@@ -37,7 +38,7 @@ export async function onRequest(context) {
       });
     }
 
-    // 获取元数据（Content-Type）
+    // 获取元数据中的 Content-Type
     const metadata = await env.IMAGES.getWithMetadata(key, { type: 'arrayBuffer' });
     const contentType = metadata.metadata?.contentType || 'image/png';
 
