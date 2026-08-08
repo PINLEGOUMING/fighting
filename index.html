@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>考研题库 · 西综/政治/英语</title>
   <style>
+    /* 样式与之前完全一致，已省略（保持原样） */
     :root {
       --bg: #e8f4f8;
       --card-bg: rgba(255,255,255,0.75);
@@ -159,7 +160,6 @@
 
     .empty-msg { color: var(--text-secondary); text-align: center; padding: 40px 0; }
 
-    /* 模态框通用 */
     .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: var(--modal-overlay); backdrop-filter: blur(3px); align-items: center; justify-content: center; z-index: 1000; }
     .modal-overlay.active { display: flex; padding: 12px; }
     .modal-box { background: var(--modal-bg); border-radius: 24px; max-width: 700px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 24px 20px 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); color: var(--text-primary); }
@@ -190,7 +190,6 @@
     .quiz-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: center; }
     .quiz-result { text-align: center; padding: 20px; }
 
-    /* ---- 笔记相关样式 ---- */
     .note-editor-area { margin: 8px 0 12px; }
     .note-editor-area textarea { width: 100%; min-height: 120px; border-radius: 12px; padding: 12px; border: 1px solid var(--filter-input-border); background: var(--form-bg); color: var(--text-primary); font-size: 14px; line-height: 1.6; resize: vertical; }
     .note-image-upload { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 6px 0 10px; }
@@ -208,6 +207,11 @@
 
     .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
     .form-actions .btn { min-height: 44px; }
+
+    .upload-status { font-size: 13px; color: var(--filter-label); margin-left: 8px; }
+    .upload-status.loading { color: var(--btn-primary-bg); }
+    .upload-status.done { color: var(--btn-success-bg); }
+    .upload-status.error { color: var(--btn-danger-bg); }
   </style>
 </head>
 <body>
@@ -296,12 +300,12 @@
   </div>
 </div>
 
-<!-- ===== 笔记模态框（支持图片上传，使用 KV 存储） ===== -->
+<!-- ===== 笔记模态框（前端直签 S3） ===== -->
 <div class="modal-overlay" id="noteModalOverlay">
   <div class="modal-box">
     <h2>📝 题目笔记 <button class="close-btn" id="closeNoteModal">×</button></h2>
     <div class="note-editor-area">
-      <textarea id="noteTextarea" rows="6" placeholder="输入笔记内容，支持 Markdown 格式...&#10;上传图片后会自动插入 ![](图片key) 标记"></textarea>
+      <textarea id="noteTextarea" rows="6" placeholder="输入笔记内容，支持 Markdown 格式…&#10;上传图片后会自动插入 ![](image/题号_序号.jpg) 标记"></textarea>
       <div class="note-image-upload">
         <span style="font-size:13px;color:var(--filter-label);">📎 插入图片：</span>
         <div class="file-input-wrap btn btn-outline btn-small">
@@ -309,6 +313,7 @@
           <input type="file" id="noteImageInput" accept="image/*" multiple>
         </div>
         <span style="font-size:12px;color:var(--text-secondary);">（支持 jpg/png/gif/webp，单张 ≤ 5MB）</span>
+        <span class="upload-status" id="uploadStatus"></span>
       </div>
       <div id="noteImagePreviewList" class="note-image-list"></div>
     </div>
@@ -331,8 +336,44 @@
 <!-- 导入文件选择器 -->
 <input type="file" id="importFileInput" accept=".json" style="display:none;">
 
+<!-- AWS SDK 及 S3 配置 -->
+<script src="https://sdk.amazonaws.com/js/aws-sdk-2.1467.0.min.js"></script>
+<script>
+  // ==================== 缤纷云配置（前端直签） ====================
+  const CONFIG = {
+    endpoint: 's3.bitiful.net',
+    region: 'cn-east-1',
+    bucket: 'fighting',
+    accessKeyId: 'ztkLsrDcZgPck97zWummX1Wj',
+    secretAccessKey: 'uN0RNeyS925QwGBjPv9uXzJmMXqf4E4',
+  };
+
+  console.log('Secret 长度:', CONFIG.secretAccessKey.length);
+
+  AWS.config.update({
+    accessKeyId: CONFIG.accessKeyId,
+    secretAccessKey: CONFIG.secretAccessKey,
+    region: CONFIG.region,
+    endpoint: CONFIG.endpoint,
+    signatureVersion: 'v4',
+    httpOptions: { timeout: 30000 },
+    maxRetries: 2,
+  });
+  const s3 = new AWS.S3({ params: { Bucket: CONFIG.bucket } });
+  // 暴露到全局供主逻辑使用
+  window.__s3 = s3;
+  window.__bucket = CONFIG.bucket;
+</script>
+
 <script>
   (function() {
+    const s3 = window.__s3;
+    const bucket = window.__bucket;
+    if (!s3) {
+      alert('AWS SDK 初始化失败，请刷新重试');
+      return;
+    }
+
     // ===================== 全局状态 =====================
     let allQuestions = [];
     let questions = [];
@@ -343,6 +384,8 @@
     let searchTerm = '';
 
     let currentNoteQid = null;
+    // 图片URL缓存，避免重复生成签名
+    const signedUrlCache = new Map();
 
     // ===================== 主题 =====================
     const themeToggle = document.getElementById('themeToggle');
@@ -399,22 +442,98 @@
       return await res.json();
     }
 
-    // ========== 图片上传：直接 POST 到后端，存入 KV ==========
-    async function uploadNoteImage(questionId, file) {
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('questionId', questionId);
+    // ===================== ★★★ S3 前端签名（核心改动） ★★★ =====================
 
-      const res = await fetch('/api/upload/image', {
-        method: 'POST',
-        body: formData,
+    /**
+     * 生成预签名上传 URL（前端直接签名）
+     */
+    function getUploadSignedUrl(key, contentType) {
+      return new Promise((resolve, reject) => {
+        s3.getSignedUrl('putObject', {
+          Bucket: bucket,
+          Key: key,
+          ContentType: contentType || 'application/octet-stream',
+          Expires: 60 * 5, // 5分钟有效期
+        }, (err, url) => {
+          if (err) reject(err);
+          else resolve(url);
+        });
+      });
+    }
+
+    /**
+     * 生成预签名下载 URL（前端直接签名）
+     */
+    function getDownloadSignedUrl(key) {
+      return new Promise((resolve, reject) => {
+        // 检查缓存
+        if (signedUrlCache.has(key)) {
+          resolve(signedUrlCache.get(key));
+          return;
+        }
+        s3.getSignedUrl('getObject', {
+          Bucket: bucket,
+          Key: key,
+          Expires: 60 * 10, // 10分钟有效期
+        }, (err, url) => {
+          if (err) reject(err);
+          else {
+            signedUrlCache.set(key, url);
+            resolve(url);
+          }
+        });
+      });
+    }
+
+    /**
+     * 从笔记内容中提取所有图片 key
+     */
+    function extractImageKeys(text) {
+      const regex = /!\[.*?\]\(([^)]+)\)/g;
+      const keys = [];
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        keys.push(match[1]);
+      }
+      return keys;
+    }
+
+    /**
+     * 计算下一个图片索引
+     */
+    function getNextImageIndex(questionId, noteContent) {
+      const pattern = new RegExp(`image/${questionId}_(\\d+)\\.(jpg|jpeg|png|gif|webp)`, 'gi');
+      const indices = [];
+      let match;
+      while ((match = pattern.exec(noteContent)) !== null) {
+        indices.push(parseInt(match[1], 10));
+      }
+      return indices.length === 0 ? 1 : Math.max(...indices) + 1;
+    }
+
+    /**
+     * 上传图片：前端生成预签名 URL 并直传 S3
+     */
+    async function uploadNoteImage(questionId, file, noteContent) {
+      const index = getNextImageIndex(questionId, noteContent || '');
+      const ext = file.name.split('.').pop() || 'jpg';
+      const key = `image/${questionId}_${index}.${ext}`;
+
+      // 获取预签名上传 URL
+      const uploadUrl = await getUploadSignedUrl(key, file.type);
+
+      // 直传 S3
+      const res = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+        },
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || '上传图片失败');
+        throw new Error(`上传到 S3 失败 (${res.status})`);
       }
-      const result = await res.json();
-      return result; // { success: true, key: '...' }
+      return { success: true, key };
     }
 
     // ===================== 筛选下拉动态更新 =====================
@@ -581,7 +700,6 @@
       });
       container.innerHTML = html;
 
-      // 事件绑定
       container.querySelectorAll('.opt-btn').forEach(btn => {
         btn.addEventListener('click', function() {
           const qid = parseInt(this.dataset.qid);
@@ -696,7 +814,7 @@
       });
     }
 
-    // ===================== 笔记（云端 + 图片 KV） =====================
+    // ===================== ★★★ 笔记（前端直签显示图片）★★★ =====================
     const noteModalOverlay = document.getElementById('noteModalOverlay');
     const noteTextarea = document.getElementById('noteTextarea');
     const notePreviewContent = document.getElementById('notePreviewContent');
@@ -705,31 +823,90 @@
     const saveNoteBtn = document.getElementById('saveNoteBtn');
     const closeNoteModal = document.getElementById('closeNoteModal');
     const cancelNoteBtn = document.getElementById('cancelNoteBtn');
+    const uploadStatus = document.getElementById('uploadStatus');
 
-    // 解析笔记中的图片标记，提取 key
-    function extractImageKeys(text) {
-      const regex = /!\[.*?\]\(([^)]+)\)/g;
-      const keys = [];
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        keys.push(match[1]);
-      }
-      return keys;
-    }
-
-    // 渲染笔记预览（将 ![alt](key) 替换为 <img>）
-    function renderNotePreview(text) {
+    /**
+     * 渲染笔记预览：替换图片标记为 <img src="预签名URL">
+     */
+    async function renderNotePreview(text) {
       if (!text || !text.trim()) {
         notePreviewContent.innerHTML = '<span class="note-empty">笔记预览将显示在这里</span>';
         return;
       }
+
+      const keys = extractImageKeys(text);
+      const urlMap = new Map();
+
+      // 批量获取预签名下载链接
+      for (const key of keys) {
+        try {
+          const url = await getDownloadSignedUrl(key);
+          urlMap.set(key, url);
+        } catch (e) {
+          console.warn('获取图片预签名失败:', key, e.message);
+          urlMap.set(key, '');
+        }
+      }
+
       let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, key) => {
-        const imgUrl = `/api/images/${encodeURIComponent(key)}`;
-        return `<img src="${imgUrl}" alt="${alt || '图片'}" loading="lazy" onerror="this.style.display='none'" />`;
+        const imgUrl = urlMap.get(key);
+        if (imgUrl) {
+          return `<img src="${imgUrl}" alt="${alt || '图片'}" loading="lazy" onerror="this.style.display='none'" />`;
+        } else {
+          return `<span style="color:var(--btn-danger-bg);">[图片加载失败: ${key}]</span>`;
+        }
       });
       html = html.replace(/\n/g, '<br>');
       notePreviewContent.innerHTML = html;
+    }
+
+    /**
+     * 更新缩略图列表
+     */
+    async function updateImagePreviewList(text) {
+      const keys = extractImageKeys(text || '');
+      if (keys.length === 0) {
+        noteImagePreviewList.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+      for (const key of keys) {
+        try {
+          const imgUrl = await getDownloadSignedUrl(key);
+          html += `
+            <div class="img-thumb" data-key="${key}">
+              <img src="${imgUrl}" loading="lazy" onerror="this.style.display='none'" />
+              <button class="del-img" data-key="${key}" title="从笔记中移除该图片引用（不会删除云端图片）">✕</button>
+            </div>
+          `;
+        } catch (e) {
+          console.warn('缩略图加载失败:', key, e.message);
+          html += `
+            <div class="img-thumb" data-key="${key}" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-secondary);">
+              ⚠️
+              <button class="del-img" data-key="${key}" title="移除">✕</button>
+            </div>
+          `;
+        }
+      }
+
+      noteImagePreviewList.innerHTML = html;
+
+      // 移除图片引用（仅从笔记文本中移除标记，不删除S3文件）
+      noteImagePreviewList.querySelectorAll('.del-img').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const key = this.dataset.key;
+          const currentText = noteTextarea.value;
+          const regex = new RegExp(`!\\[.*?\\]\\(${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`, 'g');
+          const newText = currentText.replace(regex, '');
+          noteTextarea.value = newText;
+          signedUrlCache.delete(key);
+          renderNotePreview(newText);
+          updateImagePreviewList(newText);
+        });
+      });
     }
 
     async function loadNoteFromCloud(qid) {
@@ -737,9 +914,10 @@
       return q && q.notes ? q.notes : '';
     }
 
-    // 打开笔记模态框
     async function openNoteModal(qid) {
       currentNoteQid = qid;
+      signedUrlCache.clear(); // 清空缓存，获取最新签名
+
       let noteContent = await loadNoteFromCloud(qid);
       if (!noteContent) {
         const localNotes = JSON.parse(localStorage.getItem('questionNotes') || '{}');
@@ -753,39 +931,9 @@
         }
       }
       noteTextarea.value = noteContent || '';
-      renderNotePreview(noteContent || '');
-      updateImagePreviewList(noteContent || '');
+      await renderNotePreview(noteContent || '');
+      await updateImagePreviewList(noteContent || '');
       noteModalOverlay.classList.add('active');
-    }
-
-    function updateImagePreviewList(text) {
-      const keys = extractImageKeys(text || '');
-      if (keys.length === 0) {
-        noteImagePreviewList.innerHTML = '';
-        return;
-      }
-      let html = '';
-      keys.forEach(key => {
-        const imgUrl = `/api/images/${encodeURIComponent(key)}`;
-        html += `
-          <div class="img-thumb" data-key="${key}">
-            <img src="${imgUrl}" loading="lazy" onerror="this.style.display='none'" />
-            <button class="del-img" data-key="${key}" title="从笔记中移除该图片引用（不会删除云端图片）">✕</button>
-          </div>
-        `;
-      });
-      noteImagePreviewList.innerHTML = html;
-      noteImagePreviewList.querySelectorAll('.del-img').forEach(btn => {
-        btn.addEventListener('click', function() {
-          const key = this.dataset.key;
-          const currentText = noteTextarea.value;
-          const regex = new RegExp(`!\\[.*?\\]\\(${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`, 'g');
-          const newText = currentText.replace(regex, '');
-          noteTextarea.value = newText;
-          renderNotePreview(newText);
-          updateImagePreviewList(newText);
-        });
-      });
     }
 
     function closeNoteModalFn() {
@@ -795,6 +943,9 @@
       notePreviewContent.innerHTML = '<span class="note-empty">笔记预览将显示在这里</span>';
       noteImagePreviewList.innerHTML = '';
       noteImageInput.value = '';
+      uploadStatus.textContent = '';
+      uploadStatus.className = 'upload-status';
+      signedUrlCache.clear();
     }
 
     closeNoteModal.addEventListener('click', closeNoteModalFn);
@@ -803,7 +954,6 @@
       if (e.target === noteModalOverlay) closeNoteModalFn();
     });
 
-    // 保存笔记
     saveNoteBtn.addEventListener('click', async function() {
       if (!currentNoteQid) return;
       const content = noteTextarea.value.trim();
@@ -819,7 +969,7 @@
       }
     });
 
-    // 图片上传（使用 KV 存储）
+    // ===================== ★★★ 图片上传：前端签名直传 ★★★ =====================
     noteImageInput.addEventListener('change', async function() {
       const files = this.files;
       if (!files || files.length === 0) return;
@@ -829,36 +979,56 @@
         return;
       }
 
-      for (const file of files) {
+      const statusEl = uploadStatus;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         if (file.size > 5 * 1024 * 1024) {
           alert(`图片 ${file.name} 超过 5MB，请压缩后上传`);
           continue;
         }
+
+        statusEl.textContent = `⏳ 上传 ${file.name} ...`;
+        statusEl.className = 'upload-status loading';
+
         try {
-          const result = await uploadNoteImage(currentNoteQid, file);
-          if (result.success && result.key) {
-            const cursorPos = noteTextarea.selectionStart;
-            const textBefore = noteTextarea.value.substring(0, cursorPos);
-            const textAfter = noteTextarea.value.substring(cursorPos);
-            const markdown = `![${file.name}](${result.key})`;
-            noteTextarea.value = textBefore + markdown + textAfter;
-            renderNotePreview(noteTextarea.value);
-            updateImagePreviewList(noteTextarea.value);
-            const newPos = cursorPos + markdown.length;
-            noteTextarea.selectionStart = newPos;
-            noteTextarea.selectionEnd = newPos;
-            noteTextarea.focus();
-          } else {
-            alert(`上传 ${file.name} 失败`);
-          }
+          const result = await uploadNoteImage(currentNoteQid, file, noteTextarea.value);
+
+          // 插入 Markdown 图片标记
+          const cursorPos = noteTextarea.selectionStart;
+          const textBefore = noteTextarea.value.substring(0, cursorPos);
+          const textAfter = noteTextarea.value.substring(cursorPos);
+          const markdown = `![${file.name}](${result.key})`;
+          noteTextarea.value = textBefore + markdown + textAfter;
+          const newPos = cursorPos + markdown.length;
+          noteTextarea.selectionStart = newPos;
+          noteTextarea.selectionEnd = newPos;
+          noteTextarea.focus();
+
+          signedUrlCache.delete(result.key);
+
+          await renderNotePreview(noteTextarea.value);
+          await updateImagePreviewList(noteTextarea.value);
+
+          statusEl.textContent = `✅ ${file.name} 上传成功`;
+          statusEl.className = 'upload-status done';
         } catch (e) {
-          alert(`上传 ${file.name} 失败：${e.message}`);
+          console.error('上传失败:', e);
+          statusEl.textContent = `❌ ${file.name} 上传失败: ${e.message}`;
+          statusEl.className = 'upload-status error';
         }
       }
+
+      setTimeout(() => {
+        if (statusEl.textContent.includes('上传成功') || statusEl.textContent.includes('上传失败')) {
+          statusEl.textContent = '';
+          statusEl.className = 'upload-status';
+        }
+      }, 4000);
+
       this.value = '';
     });
 
-    // 实时预览
     noteTextarea.addEventListener('input', function() {
       renderNotePreview(this.value);
       updateImagePreviewList(this.value);
