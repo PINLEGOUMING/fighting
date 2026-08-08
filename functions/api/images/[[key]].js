@@ -42,7 +42,7 @@ export async function onRequest(context) {
     const metadata = await env.IMAGES.getWithMetadata(key);
     const contentType = metadata.metadata?.contentType || 'image/png';
 
-    return new Response(value, {
+    return new Response(key, {
       status: 200,
       headers: {
         'Content-Type': contentType,
