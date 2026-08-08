@@ -31,12 +31,12 @@ export async function onRequest(context) {
   try {
     // 从 Cloudflare KV 命名空间读取（非 R2 对象存储）
     const value = await env.IMAGES.get(key);
-    if (value === null) {
-      return new Response(JSON.stringify({ error: '图片不存在' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    // if (value === null) {
+    //   return new Response(JSON.stringify({ error: '图片不存在' }), {
+    //     status: 404,
+    //     headers: { 'Content-Type': 'application/json' },
+    //   });
+    // }
 
     // 获取元数据中的 Content-Type
     const metadata = await env.IMAGES.getWithMetadata(key);
