@@ -3,12 +3,23 @@ import { AwsClient } from 'aws4fetch';
 export async function onRequest(context) {
   const { request, env } = context;
 
-  // 检查环境变量
-  const accessKeyId = env.S3_ACCESS_KEY_ID;
-  const secretAccessKey = env.S3_SECRET_ACCESS_KEY;
-  const bucket = env.S3_BUCKET_NAME;      // "page"
-  const endpoint = env.S3_ENDPOINT;       // "https://s3.cstcloud.cn"
-  const region = env.S3_REGION || 'us-east-1';
+  // 检查环境变量是否存在
+  if (!env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY || !env.S3_BUCKET_NAME || !env.S3_ENDPOINT) {
+    return new Response(JSON.stringify({ error: 'S3 环境变量未配置' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
+
+  const s3 = new AwsClient({
+    accessKeyId: env.S3_ACCESS_KEY_ID,
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+    region: env.S3_REGION || 'us-east-1',
+    service: 's3',
+  });
+
+  const bucket = env.S3_BUCKET_NAME;
+  const endpoint = env.S3_ENDPOINT;
 
   const headers = {
     'Content-Type': 'application/json',
@@ -29,18 +40,6 @@ export async function onRequest(context) {
   }
 
   try {
-    // 检查必要环境变量
-    if (!accessKeyId || !secretAccessKey || !bucket || !endpoint) {
-      throw new Error('S3 环境变量未完整配置');
-    }
-
-    const s3 = new AwsClient({
-      accessKeyId,
-      secretAccessKey,
-      region,
-      service: 's3',
-    });
-
     const formData = await request.formData();
     const file = formData.get('image');
     const questionId = formData.get('questionId');
@@ -56,7 +55,6 @@ export async function onRequest(context) {
     const ext = file.name.split('.').pop() || 'png';
     const key = `notes/${questionId}/${timestamp}_${file.name}`;
 
-    // 路径寻址 (Path-Style)
     const s3Url = `${endpoint}/${bucket}/${key}`;
     const buffer = await file.arrayBuffer();
 
@@ -71,7 +69,7 @@ export async function onRequest(context) {
 
     if (!putResponse.ok) {
       const errText = await putResponse.text();
-      throw new Error(`S3 上传失败 (${putResponse.status}): ${errText}`);
+      throw new Error(`S3 上传失败: ${putResponse.status} ${errText}`);
     }
 
     return new Response(JSON.stringify({ success: true, key }), {
@@ -79,7 +77,6 @@ export async function onRequest(context) {
       headers,
     });
   } catch (error) {
-    console.error('图片上传错误:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers,

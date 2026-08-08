@@ -14,18 +14,9 @@ export async function onRequest(context) {
   }
 
   const url = new URL(request.url);
-  const pathname = url.pathname;
-
-  // 仅当路径为 /api/questions 且方法匹配时处理
-  if (pathname !== '/api/questions') {
-    return new Response(JSON.stringify({ error: 'Not Found' }), {
-      status: 404,
-      headers,
-    });
-  }
 
   try {
-    // ================== GET ==================
+    // GET
     if (request.method === 'GET') {
       const subject = url.searchParams.get('subject') || '';
       const subCategory = url.searchParams.get('subCategory') || '';
@@ -61,7 +52,7 @@ export async function onRequest(context) {
       return new Response(JSON.stringify(questions), { headers });
     }
 
-    // ================== POST ==================
+    // POST
     if (request.method === 'POST') {
       const body = await request.json();
       if (!Array.isArray(body) || body.length === 0) {
@@ -100,7 +91,7 @@ export async function onRequest(context) {
       });
     }
 
-    // ================== DELETE ==================
+    // DELETE
     if (request.method === 'DELETE') {
       const id = url.searchParams.get('id');
       if (!id) {
@@ -121,7 +112,6 @@ export async function onRequest(context) {
       return new Response(JSON.stringify({ success: true }), { headers });
     }
 
-    // 其他方法
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers,

@@ -4,6 +4,13 @@ export async function onRequest(context) {
   const { request, env, params } = context;
   const { key } = params;
 
+  if (!env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY || !env.S3_BUCKET_NAME || !env.S3_ENDPOINT) {
+    return new Response(JSON.stringify({ error: 'S3 环境变量未配置' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
+
   const s3 = new AwsClient({
     accessKeyId: env.S3_ACCESS_KEY_ID,
     secretAccessKey: env.S3_SECRET_ACCESS_KEY,
@@ -64,7 +71,7 @@ export async function onRequest(context) {
       },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: '读取图片失败' }), {
+    return new Response(JSON.stringify({ error: '读取图片失败: ' + error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
