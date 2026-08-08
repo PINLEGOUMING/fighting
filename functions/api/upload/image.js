@@ -6,7 +6,7 @@ export async function onRequest(context) {
 
   // 从环境变量读取配置（若未设置则抛出错误）
   const endpoint = env.BITIFUL_ENDPOINT || 'https://s3.bitiful.net';
-  const region = env.BITIFUL_REGION || 'us-east-1';
+  const region = env.BITIFUL_REGION;
   const bucket = env.BITIFUL_BUCKET;
   const accessKeyId = env.BITIFUL_ACCESS_KEY_ID;
   const secretAccessKey = env.BITIFUL_SECRET_ACCESS_KEY;
@@ -28,7 +28,7 @@ export async function onRequest(context) {
       accessKeyId,
       secretAccessKey,
     },
-    forcePathStyle: true,        // 缤纷云通常需要路径风格
+    forcePathStyle: false,        // 缤纷云通常需要路径风格
     signatureVersion: 'v4',
   });
 
